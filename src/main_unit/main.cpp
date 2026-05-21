@@ -202,7 +202,6 @@ void setup()
     {
 
         ota_begin();
-        display_set_local_ota(true);
 
         while (true)
         {
@@ -298,7 +297,6 @@ void loop()
         {
             earlyOtaTriggered = true;
             ota_begin();
-            display_set_local_ota(true);
         }
     }
     else
@@ -349,7 +347,6 @@ void loop()
     gSys.lastCommand.valid = true;
     gSys.lastCommand.timestampMs = now;
 
-
     // 4. Boat heading from Remote1
     float remoteBoatHeadingDeg = 0.0f;
 
@@ -372,76 +369,79 @@ void loop()
     // 7. Apply input policy AFTER navigation
     gInputLogic.applyButtons(btn, now, gSys, gController);
 
-    // . Calibration sweep update
-    gCalibration.update(
-        gSys.sensors.courseOverGroundDeg,
-        gSys.sensors.gpsSpeedMps,
-        gSys.sensors.motorHeadingDeg);
+    /*
+        // . Calibration sweep update
+        gCalibration.update(
+            gSys.sensors.courseOverGroundDeg,
+            gSys.sensors.gpsSpeedMps,
+            gSys.sensors.motorHeadingDeg);
 
-    if (gCalibration.hasPendingBucketSample())
-    {
-        CalBucketSamplePacket calPkt =
-            gCalibration.takePendingBucketSample();
+        if (gCalibration.hasPendingBucketSample())
+        {
+            CalBucketSamplePacket calPkt =
+                gCalibration.takePendingBucketSample();
 
-        gRemote.sendCalibrationPacket(
-            reinterpret_cast<const uint8_t *>(&calPkt),
-            sizeof(calPkt));
-    }
+            gRemote.sendCalibrationPacket(
+                reinterpret_cast<const uint8_t *>(&calPkt),
+                sizeof(calPkt));
+        }
 
-    CalBoatBucketResultPacket boatPkt;
-    if (gRemote.getBoatCalibrationResult(boatPkt))
-    {
-        gCalibration.handleBoatBucketResult(boatPkt);
-    }
+        CalBoatBucketResultPacket boatPkt;
+        if (gRemote.getBoatCalibrationResult(boatPkt))
+        {
+            gCalibration.handleBoatBucketResult(boatPkt);
+        }
 
-    static bool cwDoneHandled = false;
-    static bool finalLutSent = false;
+        static bool cwDoneHandled = false;
+        static bool finalLutSent = false;
 
-    if (gCalibration.isClockwiseComplete() && !cwDoneHandled)
-    {
-        cwDoneHandled = true;
+        if (gCalibration.isClockwiseComplete() && !cwDoneHandled)
+        {
+            cwDoneHandled = true;
 
-        Serial.println("[CAL] CW complete. Start CCW sweep.");
-        startCalibrationCounterClockwise();
-    }
+            Serial.println("[CAL] CW complete. Start CCW sweep.");
+            startCalibrationCounterClockwise();
+        }
 
-    if (gCalibration.isComplete() && !finalLutSent)
-    {
-        finalLutSent = true;
+        if (gCalibration.isComplete() && !finalLutSent)
+        {
+            finalLutSent = true;
 
-        Serial.println("[CAL] Calibration complete. Sending boat LUT.");
-        sendBoatLutToRemote();
-    }
-
+            Serial.println("[CAL] Calibration complete. Sending boat LUT.");
+            sendBoatLutToRemote();
+        }
+*/
     // 9. Safety AFTER fresh sensors
     gInputLogic.applySafety(now, gSys, gController);
+    /*
+        if (btn.stopRequested && gCalibration.active())
+        {
+            Serial.println("[CAL] Cancelled by STOP");
 
-    if (btn.stopRequested && gCalibration.active())
-    {
-        Serial.println("[CAL] Cancelled by STOP");
+            gCalibration.stop();
 
-        gCalibration.stop();
+            CalEndSweepPacket endPkt;
+            endPkt.saveToFlash = false;
+            endPkt.commandId = gCalibrationCommandId;
 
-        CalEndSweepPacket endPkt;
-        endPkt.saveToFlash = false;
-        endPkt.commandId = gCalibrationCommandId;
+            gRemote.sendCalibrationPacket(
+                reinterpret_cast<const uint8_t *>(&endPkt),
+                sizeof(endPkt));
 
-        gRemote.sendCalibrationPacket(
-            reinterpret_cast<const uint8_t *>(&endPkt),
-            sizeof(endPkt));
+            cwDoneHandled = false;
+            finalLutSent = false;
+        }
 
-        cwDoneHandled = false;
-        finalLutSent = false;
-    }
+        if (btn.requestCalibration && !gCalibration.active())
+        {
+            cwDoneHandled = false;
+            finalLutSent = false;
 
-    if (btn.requestCalibration && !gCalibration.active())
-    {
-        cwDoneHandled = false;
-        finalLutSent = false;
+            Serial.println("[CAL] ButtonManager start");
+            startCalibrationClockwise();
+        }
 
-        Serial.println("[CAL] ButtonManager start");
-        startCalibrationClockwise();
-    }
+        */
 
     // 10. Control update
     if (now - lastControlMs >= TimingConfig::CONTROL_INTERVAL_MS)
@@ -465,10 +465,23 @@ void loop()
     pkt.targetSpeedCmps = (uint16_t)roundf(gSys.targetSpeedMps * 100.0f);
     pkt.gpsCogDeg10 = (uint16_t)roundf(gSys.sensors.courseOverGroundDeg * 10.0f);
 
-    pkt.boatHeadingDeg10 =
-        (uint16_t)roundf(gSys.sensors.boatHeadingDeg * 10.0f);
+    if (gSys.sensors.boatHeadingWorldValid)
+    {
+        pkt.boatHeadingDeg10 =
+            (uint16_t)roundf(gSys.sensors.boatHeadingWorldDeg * 10.0f);
+    }
+    else
+    {
+        pkt.boatHeadingDeg10 =
+            (uint16_t)roundf(gSys.sensors.boatHeadingDeg * 10.0f);
+    }
 
-    if (gSys.sensors.motorImuValid)
+    if (gSys.sensors.motorHeadingWorldValid)
+    {
+        pkt.motorHeadingDeg10 =
+            (uint16_t)roundf(gSys.sensors.motorHeadingWorldDeg * 10.0f);
+    }
+    else if (gSys.sensors.motorImuValid)
     {
         pkt.motorHeadingDeg10 =
             (uint16_t)roundf(gSys.sensors.motorHeadingDeg * 10.0f);
@@ -477,9 +490,6 @@ void loop()
     {
         pkt.motorHeadingDeg10 = 0;
     }
-
-    pkt.targetHeadingDeg10 =
-        (uint16_t)roundf(gSys.targetHeadingDeg * 10.0f);
 
     pkt.satellites = (uint8_t)gSys.sensors.satellites;
     pkt.satellitesInView = (uint8_t)gSys.sensors.satellitesInView;
@@ -539,35 +549,35 @@ void loop()
         pkt.counter = 0;
 
     pkt.calFlags = 0;
-
-    if (gCalibration.active())
-    {
-        pkt.calFlags |= STATUS_CAL_FLAG_ACTIVE;
-    }
-
-    if (gCalibration.isComplete())
-    {
-        pkt.calFlags |= STATUS_CAL_FLAG_COMPLETE;
-    }
-
-    pkt.calBucketMask = gCalibration.mainBucketsValidMask();
-
-    if (gCalibration.active())
-    {
-        if (!gCalibration.isClockwiseComplete())
+    /*
+        if (gCalibration.active())
         {
-            pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::Clockwise);
+            pkt.calFlags |= STATUS_CAL_FLAG_ACTIVE;
+        }
+
+        if (gCalibration.isComplete())
+        {
+            pkt.calFlags |= STATUS_CAL_FLAG_COMPLETE;
+        }
+
+        pkt.calBucketMask = gCalibration.mainBucketsValidMask();
+
+        if (gCalibration.active())
+        {
+            if (!gCalibration.isClockwiseComplete())
+            {
+                pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::Clockwise);
+            }
+            else
+            {
+                pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::CounterClockwise);
+            }
         }
         else
         {
-            pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::CounterClockwise);
+            pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::None);
         }
-    }
-    else
-    {
-        pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::None);
-    }
-
+    */
     static uint32_t lastStatusR1Ms = 0;
     static uint32_t lastStatusR2Ms = 0;
 

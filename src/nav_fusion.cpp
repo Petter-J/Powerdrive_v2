@@ -2,6 +2,13 @@
 #include <cstring>
 #include "config.h"
 
+static bool gpsHeadingCalibrationOk(const GpsFix &gps)
+{
+    return gps.speedValid &&
+           gps.courseValid &&
+           gps.speedMps >= 1.0f;
+}
+
 void NavFusion::update(
     const GpsFix &gps,
     const ImuHeading &imu,
@@ -78,7 +85,12 @@ void NavFusion::update(
 
     if (imu.valid)
     {
+        s.motorHeadingRawDeg = imu.headingDeg;
         s.motorHeadingDeg = imu.headingDeg;
+        s.motorHeadingWorldDeg = wrap360(
+            imu.headingDeg + s.motorHeadingWorldOffsetDeg);
+        s.motorHeadingWorldValid = true;
+
         s.motorPitchDeg = imu.pitchDeg;
         s.motorRollDeg = imu.rollDeg;
         s.motorImuValid = true;
@@ -98,6 +110,11 @@ void NavFusion::update(
 
     if (s.boatImuValid)
     {
+        s.boatHeadingRawDeg = s.boatHeadingDeg;
+        s.boatHeadingWorldDeg = wrap360(
+            s.boatHeadingDeg + s.boatHeadingWorldOffsetDeg);
+        s.boatHeadingWorldValid = true;
+
         lastBoatImuValidMs = nowMs;
     }
 
@@ -105,6 +122,35 @@ void NavFusion::update(
         s.boatImuValid ||
         ((uint32_t)(nowMs - lastBoatImuValidMs) <
          BoatCompassConfig::BOAT_HEADING_HOLD_MS);
+
+    static bool worldHeadingCalibrated = false;
+
+    if (!worldHeadingCalibrated &&
+        gpsHeadingCalibrationOk(gps) &&
+        s.motorImuValid &&
+        s.boatImuValid)
+    {
+        s.motorHeadingWorldOffsetDeg =
+            shortestAngleErrorDeg(
+                gps.courseDeg,
+                s.motorHeadingRawDeg);
+
+        s.boatHeadingWorldOffsetDeg =
+            shortestAngleErrorDeg(
+                gps.courseDeg,
+                s.boatHeadingRawDeg);
+
+        s.motorHeadingWorldDeg =
+            wrap360(s.motorHeadingRawDeg + s.motorHeadingWorldOffsetDeg);
+
+        s.boatHeadingWorldDeg =
+            wrap360(s.boatHeadingRawDeg + s.boatHeadingWorldOffsetDeg);
+
+        s.motorHeadingWorldValid = true;
+        s.boatHeadingWorldValid = true;
+
+        worldHeadingCalibrated = true;
+    }
 
     if (motorImuUsable && boatImuUsable)
     {
@@ -126,13 +172,17 @@ void NavFusion::update(
     }
     else if (boatImuUsable)
     {
-        s.headingDeg = s.boatHeadingDeg;
+        s.headingDeg = s.boatHeadingWorldValid
+                           ? s.boatHeadingWorldDeg
+                           : s.boatHeadingDeg;
         s.headingValid = true;
         strcpy(s.headingSource, "BIMU");
     }
     else if (motorImuUsable)
     {
-        s.headingDeg = s.motorHeadingDeg;
+        s.headingDeg = s.motorHeadingWorldValid
+                           ? s.motorHeadingWorldDeg
+                           : s.motorHeadingDeg;
         s.headingValid = true;
         strcpy(s.headingSource, "MIMU");
     }

@@ -5,7 +5,7 @@
 #include "imu_sensor.h"
 #include "remote_protocol.h"
 #include "display.h"
-#include "remote_calibration.h"
+// #include "remote_calibration.h"
 #include "config.h"
 #include "ota_update.h"
 
@@ -34,16 +34,16 @@ constexpr uint32_t buttonBit(ButtonId id)
 // ============================================================
 namespace RemoteButtonPins
 {
-    static constexpr int STOP         = 18;
-    static constexpr int MODE_MANUAL  = 17;
-    static constexpr int MODE_AUTO    = 16;
-    static constexpr int MODE_ANCHOR  = 15;
+    static constexpr int STOP = 18;
+    static constexpr int MODE_MANUAL = 17;
+    static constexpr int MODE_AUTO = 16;
+    static constexpr int MODE_ANCHOR = 15;
 
-    static constexpr int THRUST_UP    = 5;
-    static constexpr int THRUST_DOWN  = 6;
+    static constexpr int THRUST_UP = 5;
+    static constexpr int THRUST_DOWN = 6;
 
-    static constexpr int STEER_LEFT   = 9;
-    static constexpr int STEER_RIGHT  = 10;
+    static constexpr int STEER_LEFT = 9;
+    static constexpr int STEER_RIGHT = 10;
 }
 
 // ============================================================
@@ -62,7 +62,7 @@ static ImuSensor gBoatImu;
 static ImuHeading gBoatHeading;
 static bool gBoatImuStarted = false;
 
-static RemoteCalibration gRemoteCalibration;
+// static RemoteCalibration gRemoteCalibration;
 
 // ============================================================
 // BUTTON READ
@@ -101,7 +101,7 @@ static uint32_t readButtons()
 // ============================================================
 // CALLBACKS
 // ============================================================
-void onSent(const uint8_t*, esp_now_send_status_t) {}
+void onSent(const uint8_t *, esp_now_send_status_t) {}
 
 void onRecv(const uint8_t *, const uint8_t *data, int len)
 {
@@ -116,50 +116,51 @@ void onRecv(const uint8_t *, const uint8_t *data, int len)
         gLastStatusMs = millis();
         return;
     }
+    /*
+        // Kalibreringspaket från Main
+        const uint8_t msgType = data[0];
 
-    // Kalibreringspaket från Main
-    const uint8_t msgType = data[0];
-
-    if (msgType == static_cast<uint8_t>(RemoteMsgType::CalStartSweep) &&
-        len == (int)sizeof(CalStartSweepPacket))
-    {
-        CalStartSweepPacket packet;
-        memcpy(&packet, data, sizeof(packet));
-        gRemoteCalibration.startSweep(packet);
-        return;
-    }
-
-    if (msgType == static_cast<uint8_t>(RemoteMsgType::CalBucketSample) &&
-        len == (int)sizeof(CalBucketSamplePacket))
-    {
-        CalBucketSamplePacket packet;
-        memcpy(&packet, data, sizeof(packet));
-
-        if (gBoatHeading.valid)
+        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalStartSweep) &&
+            len == (int)sizeof(CalStartSweepPacket))
         {
-            gRemoteCalibration.addBucketSample(packet, gBoatHeading.headingDeg);
+            CalStartSweepPacket packet;
+            memcpy(&packet, data, sizeof(packet));
+            gRemoteCalibration.startSweep(packet);
+            return;
         }
 
-        return;
-    }
+        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalBucketSample) &&
+            len == (int)sizeof(CalBucketSamplePacket))
+        {
+            CalBucketSamplePacket packet;
+            memcpy(&packet, data, sizeof(packet));
 
-    if (msgType == static_cast<uint8_t>(RemoteMsgType::CalSaveBoatLutPoint) &&
-        len == (int)sizeof(CalSaveBoatLutPointPacket))
-    {
-        CalSaveBoatLutPointPacket packet;
-        memcpy(&packet, data, sizeof(packet));
-        gRemoteCalibration.saveBoatLutPoint(packet);
-        return;
-    }
+            if (gBoatHeading.valid)
+            {
+                gRemoteCalibration.addBucketSample(packet, gBoatHeading.headingDeg);
+            }
 
-    if (msgType == static_cast<uint8_t>(RemoteMsgType::CalEndSweep) &&
-        len == (int)sizeof(CalEndSweepPacket))
-    {
-        CalEndSweepPacket packet;
-        memcpy(&packet, data, sizeof(packet));
-        gRemoteCalibration.endSweep(packet);
-        return;
-    }
+            return;
+        }
+
+        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalSaveBoatLutPoint) &&
+            len == (int)sizeof(CalSaveBoatLutPointPacket))
+        {
+            CalSaveBoatLutPointPacket packet;
+            memcpy(&packet, data, sizeof(packet));
+            gRemoteCalibration.saveBoatLutPoint(packet);
+            return;
+        }
+
+        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalEndSweep) &&
+            len == (int)sizeof(CalEndSweepPacket))
+        {
+            CalEndSweepPacket packet;
+            memcpy(&packet, data, sizeof(packet));
+            gRemoteCalibration.endSweep(packet);
+            return;
+        }
+            */
 }
 
 // ============================================================
@@ -230,8 +231,6 @@ void setup()
     pinMode(RemoteButtonPins::STEER_LEFT, INPUT_PULLUP);
     pinMode(RemoteButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
-   
-
     if (esp_now_init() != ESP_OK)
     {
         Serial.println("ESP-NOW init failed");
@@ -248,7 +247,7 @@ void setup()
 
     esp_now_add_peer(&peer);
 
-    gRemoteCalibration.begin();
+    // gRemoteCalibration.begin();
     delay(100);
 
     gBoatImuStarted = gBoatImu.begin(
@@ -307,6 +306,7 @@ void loop()
         {
             earlyOtaTriggered = true;
             ota_begin();
+            display_set_local_ota(true);
         }
     }
     else
@@ -340,16 +340,16 @@ void loop()
         gBoatImu.update(gBoatHeading);
     }
 
-    if (gRemoteCalibration.hasPendingBucketResult())
-    {
-        CalBoatBucketResultPacket result =
-            gRemoteCalibration.takePendingBucketResult();
+    /*if (gRemoteCalibration.hasPendingBucketResult())
+     {
+         CalBoatBucketResultPacket result =
+             gRemoteCalibration.takePendingBucketResult();
 
-        esp_now_send(RECEIVER_MAC,
-                     reinterpret_cast<const uint8_t *>(&result),
-                     sizeof(result));
-    }
-
+         esp_now_send(RECEIVER_MAC,
+                      reinterpret_cast<const uint8_t *>(&result),
+                      sizeof(result));
+     }
+ */
     static uint32_t lastBoatPrintMs = 0;
     if (now - lastBoatPrintMs >= 1000)
     {
@@ -411,7 +411,5 @@ void loop()
             gStatus.calPhase,
             gBoatHeading.valid,
             gBoatHeading.headingDeg);
-        }
-
-    
+    }
 }
