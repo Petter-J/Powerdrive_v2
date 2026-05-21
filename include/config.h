@@ -154,7 +154,7 @@ namespace CompassConfig
     static constexpr int TX_PIN = 4; // eller riktig TX-pin om du använder den
     static constexpr uint32_t BAUD = 115200;
 
-    static constexpr float M_HEADING_OFFSET_DEG = 46.0f;
+    static constexpr float M_HEADING_OFFSET_DEG = 0.0f;
     static constexpr uint32_t MOTOR_HEADING_HOLD_MS = 400;
 
 }
@@ -162,8 +162,8 @@ namespace CompassConfig
 namespace BoatCompassConfig
 {
     // UART-RVC för BOAT BNO085
-    static constexpr int RX_PIN = 3; // ESP RX <- BNO TX
-    static constexpr int TX_PIN = 4; // oftast ej använd i RVC
+    static constexpr int RX_PIN = 38; // ESP RX <- BNO TX
+    static constexpr int TX_PIN = -1; // oftast ej använd i RVC
     static constexpr uint32_t BAUD = 115200;
 
     static constexpr float B_HEADING_OFFSET_DEG = 0.0f;

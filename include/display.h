@@ -17,4 +17,5 @@ void display_update(
     bool localBoatHeadingValid = false,
     float localBoatHeadingDeg = 0.0f);
 
-void display_set_brightness(uint8_t value);
+
+void display_set_local_ota(bool active);

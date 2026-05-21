@@ -7,6 +7,7 @@
 #include "display.h"
 #include "remote_calibration.h"
 #include "config.h"
+#include "ota_update.h"
 
 // ============================================================
 // BUTTON IDS
@@ -167,7 +168,7 @@ void onRecv(const uint8_t *, const uint8_t *data, int len)
 void setup()
 {
     Serial.begin(115200);
-    delay(1500);
+    delay(500);
 
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
@@ -175,7 +176,50 @@ void setup()
     Serial.print("REMOTE MAC: ");
     Serial.println(WiFi.macAddress());
 
+    display_begin();
+    delay(100);
+
     pinMode(RemoteButtonPins::STOP, INPUT_PULLUP);
+
+    const uint32_t bootStartMs = millis();
+    bool forceOta = false;
+
+    while (millis() - bootStartMs < 5000)
+    {
+        if (digitalRead(RemoteButtonPins::STOP) == LOW)
+        {
+            forceOta = true;
+            break;
+        }
+
+        delay(10);
+    }
+
+    if (forceOta)
+    {
+        ota_begin();
+        display_set_local_ota(true);
+
+        while (true)
+        {
+            ota_handle();
+
+            display_update(
+                gStatus,
+                true, // hasStatus
+                0,    // buttonMask
+                true, // linkAlive
+                false,
+                false,
+                0,
+                0,
+                false,
+                0.0f);
+
+            delay(50);
+        }
+    }
+
     pinMode(RemoteButtonPins::MODE_MANUAL, INPUT_PULLUP);
     pinMode(RemoteButtonPins::MODE_AUTO, INPUT_PULLUP);
     pinMode(RemoteButtonPins::MODE_ANCHOR, INPUT_PULLUP);
@@ -186,8 +230,7 @@ void setup()
     pinMode(RemoteButtonPins::STEER_LEFT, INPUT_PULLUP);
     pinMode(RemoteButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
-    display_begin();
-    delay(100);
+   
 
     if (esp_now_init() != ESP_OK)
     {
@@ -244,6 +287,54 @@ void loop()
 
     const uint32_t buttonMask = readButtons();
 
+    // Emergency OTA: STOP held 5 sec
+
+    static uint32_t earlyOtaStopHoldStartMs = 0;
+    static bool earlyOtaTriggered = false;
+
+    const bool stopHeld =
+        (buttonMask & buttonBit(ButtonId::STOP)) != 0;
+
+    if (stopHeld)
+    {
+        if (earlyOtaStopHoldStartMs == 0)
+        {
+            earlyOtaStopHoldStartMs = millis();
+        }
+
+        if (!earlyOtaTriggered &&
+            (millis() - earlyOtaStopHoldStartMs) >= 5000)
+        {
+            earlyOtaTriggered = true;
+            ota_begin();
+        }
+    }
+    else
+    {
+        earlyOtaStopHoldStartMs = 0;
+        earlyOtaTriggered = false;
+    }
+
+    ota_handle();
+
+    if (ota_is_active())
+    {
+        display_set_local_ota(true);
+
+        display_update(
+            gStatus,
+            true,
+            buttonMask,
+            true,
+            false,
+            false,
+            0,
+            0,
+            gBoatHeading.valid,
+            gBoatHeading.headingDeg);
+
+        return;
+    }
     if (gBoatImuStarted)
     {
         gBoatImu.update(gBoatHeading);

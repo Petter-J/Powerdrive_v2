@@ -7,14 +7,16 @@
 #include <Adafruit_ILI9341.h>
 
 #define TFT_CS 8
-#define TFT_DC 38
-#define TFT_RST 39
+#define TFT_DC 11
+#define TFT_RST 12
 #define TFT_SCLK 36
 #define TFT_MOSI 35
 
 static Adafruit_ILI9341 tft(TFT_CS, TFT_DC, TFT_RST);
 
 static bool gDisplayAvailable = false;
+
+static bool gLocalOtaActive = false;
 
 static constexpr int W = 240;
 static constexpr int H = 320;
@@ -51,9 +53,9 @@ bool display_is_available()
     return gDisplayAvailable;
 }
 
-void display_set_brightness(uint8_t value)
+void display_set_local_ota(bool active)
 {
-    (void)value;
+    gLocalOtaActive = active;
 }
 
 static const char *modeText(uint8_t mode)
@@ -227,8 +229,11 @@ static ScreenType getScreenType(
     if (!hasStatus || linkLostTooLong)
         return SCREEN_NO_DATA;
 
-    if ((status.flags & STATUS_FLAG_OTA_ACTIVE) != 0)
+    if (gLocalOtaActive ||
+        ((status.flags & STATUS_FLAG_OTA_ACTIVE) != 0))
+    {
         return SCREEN_OTA;
+    }
 
     if (calActive || calComplete)
         return SCREEN_CAL;

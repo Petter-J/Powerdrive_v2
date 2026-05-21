@@ -202,6 +202,7 @@ void setup()
     {
 
         ota_begin();
+        display_set_local_ota(true);
 
         while (true)
         {
@@ -297,6 +298,7 @@ void loop()
         {
             earlyOtaTriggered = true;
             ota_begin();
+            display_set_local_ota(true);
         }
     }
     else
