@@ -205,7 +205,7 @@ static void drawFooter(
     tft.print("BH");
     tft.print(headingDisplayDeg(status.boatHeadingDeg10));
 
-    tft.setCursor(190, FOOTER2_Y);
+    tft.setCursor(180, FOOTER2_Y);
     tft.print("MH");
     tft.print(headingDisplayDeg(status.motorHeadingDeg10));
 }
@@ -320,7 +320,6 @@ void display_update(
     bool localBoatHeadingValid,
     float localBoatHeadingDeg)
 {
-    
 
     if (!gDisplayAvailable)
         return;

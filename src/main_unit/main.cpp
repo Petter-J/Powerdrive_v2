@@ -9,7 +9,7 @@
 #include "input_logic.h"
 #include "navigation.h"
 #include "ota_update.h"
-#include "calibration_manager.h"
+
 #include <cstring>
 
 // ============================================================
@@ -25,7 +25,7 @@ static RemoteEspNow gRemote;
 static ButtonManager gButtons;
 static InputLogic gInputLogic;
 static Navigation gNavigation;
-static CalibrationManager gCalibration;
+
 static uint32_t gCalibrationCommandId = 1;
 
 // ============================================================
@@ -60,86 +60,6 @@ static uint32_t readLocalButtons()
         mask |= buttonBit(ButtonId::STEER_RIGHT);
 
     return mask;
-}
-
-static void startCalibrationClockwise()
-{
-    gCalibrationCommandId++;
-
-    gCalibration.startClockwise(gCalibrationCommandId);
-
-    CalStartSweepPacket pkt;
-    pkt.phase = static_cast<uint8_t>(RemoteCalPhase::Clockwise);
-    pkt.bucketCount = HEADING_CAL_BUCKET_COUNT;
-    pkt.bucketWindowDeg = HEADING_CAL_BUCKET_WINDOW_DEG;
-    pkt.minSamplesPerBucket = HEADING_CAL_MIN_SAMPLES_PER_BUCKET;
-    pkt.commandId = gCalibrationCommandId;
-
-    // Byt detta mot din befintliga send-funktion om du har en wrapper
-    gRemote.sendCalibrationPacket(
-        reinterpret_cast<const uint8_t *>(&pkt),
-        sizeof(pkt));
-
-    Serial.println("[CAL] Started clockwise sweep");
-}
-
-static void startCalibrationCounterClockwise()
-{
-    gCalibrationCommandId++;
-
-    gCalibration.startCounterClockwise(gCalibrationCommandId);
-
-    CalStartSweepPacket pkt;
-    pkt.phase = static_cast<uint8_t>(RemoteCalPhase::CounterClockwise);
-    pkt.bucketCount = HEADING_CAL_BUCKET_COUNT;
-    pkt.bucketWindowDeg = HEADING_CAL_BUCKET_WINDOW_DEG;
-    pkt.minSamplesPerBucket = HEADING_CAL_MIN_SAMPLES_PER_BUCKET;
-    pkt.commandId = gCalibrationCommandId;
-
-    gRemote.sendCalibrationPacket(
-        reinterpret_cast<const uint8_t *>(&pkt),
-        sizeof(pkt));
-
-    Serial.println("[CAL] Started counter-clockwise sweep");
-}
-
-static void sendBoatLutToRemote()
-{
-    const HeadingCalPoint *points = gCalibration.finalPoints();
-
-    for (uint8_t i = 0; i < HEADING_CAL_BUCKET_COUNT; i++)
-    {
-        const HeadingCalPoint &p = points[i];
-
-        CalSaveBoatLutPointPacket pkt;
-        pkt.lutIndex = i;
-        pkt.rawDeg = p.boatRawDeg;
-        pkt.corrDeg = p.gpsDeg;
-        pkt.valid = p.valid;
-        pkt.commandId = gCalibrationCommandId;
-
-        gRemote.sendCalibrationPacket(
-            reinterpret_cast<const uint8_t *>(&pkt),
-            sizeof(pkt));
-
-        delay(10);
-
-        Serial.printf("[CAL] Sent boat LUT %u raw=%.1f corr=%.1f valid=%d\n",
-                      i,
-                      pkt.rawDeg,
-                      pkt.corrDeg,
-                      pkt.valid ? 1 : 0);
-    }
-
-    CalEndSweepPacket endPkt;
-    endPkt.saveToFlash = false;
-    endPkt.commandId = gCalibrationCommandId;
-
-    gRemote.sendCalibrationPacket(
-        reinterpret_cast<const uint8_t *>(&endPkt),
-        sizeof(endPkt));
-
-    Serial.println("[CAL] Boat LUT sent to remote");
 }
 
 // ============================================================
@@ -253,7 +173,7 @@ void setup()
     gButtons.begin();
     gInputLogic.begin();
     gNavigation.begin();
-    gCalibration.begin();
+    
 
     DBG_PRINTLN("Buttons active, serial control removed.");
 }
@@ -369,79 +289,10 @@ void loop()
     // 7. Apply input policy AFTER navigation
     gInputLogic.applyButtons(btn, now, gSys, gController);
 
-    /*
-        // . Calibration sweep update
-        gCalibration.update(
-            gSys.sensors.courseOverGroundDeg,
-            gSys.sensors.gpsSpeedMps,
-            gSys.sensors.motorHeadingDeg);
-
-        if (gCalibration.hasPendingBucketSample())
-        {
-            CalBucketSamplePacket calPkt =
-                gCalibration.takePendingBucketSample();
-
-            gRemote.sendCalibrationPacket(
-                reinterpret_cast<const uint8_t *>(&calPkt),
-                sizeof(calPkt));
-        }
-
-        CalBoatBucketResultPacket boatPkt;
-        if (gRemote.getBoatCalibrationResult(boatPkt))
-        {
-            gCalibration.handleBoatBucketResult(boatPkt);
-        }
-
-        static bool cwDoneHandled = false;
-        static bool finalLutSent = false;
-
-        if (gCalibration.isClockwiseComplete() && !cwDoneHandled)
-        {
-            cwDoneHandled = true;
-
-            Serial.println("[CAL] CW complete. Start CCW sweep.");
-            startCalibrationCounterClockwise();
-        }
-
-        if (gCalibration.isComplete() && !finalLutSent)
-        {
-            finalLutSent = true;
-
-            Serial.println("[CAL] Calibration complete. Sending boat LUT.");
-            sendBoatLutToRemote();
-        }
-*/
+  
     // 9. Safety AFTER fresh sensors
     gInputLogic.applySafety(now, gSys, gController);
-    /*
-        if (btn.stopRequested && gCalibration.active())
-        {
-            Serial.println("[CAL] Cancelled by STOP");
-
-            gCalibration.stop();
-
-            CalEndSweepPacket endPkt;
-            endPkt.saveToFlash = false;
-            endPkt.commandId = gCalibrationCommandId;
-
-            gRemote.sendCalibrationPacket(
-                reinterpret_cast<const uint8_t *>(&endPkt),
-                sizeof(endPkt));
-
-            cwDoneHandled = false;
-            finalLutSent = false;
-        }
-
-        if (btn.requestCalibration && !gCalibration.active())
-        {
-            cwDoneHandled = false;
-            finalLutSent = false;
-
-            Serial.println("[CAL] ButtonManager start");
-            startCalibrationClockwise();
-        }
-
-        */
+    
 
     // 10. Control update
     if (now - lastControlMs >= TimingConfig::CONTROL_INTERVAL_MS)
@@ -549,35 +400,7 @@ void loop()
         pkt.counter = 0;
 
     pkt.calFlags = 0;
-    /*
-        if (gCalibration.active())
-        {
-            pkt.calFlags |= STATUS_CAL_FLAG_ACTIVE;
-        }
-
-        if (gCalibration.isComplete())
-        {
-            pkt.calFlags |= STATUS_CAL_FLAG_COMPLETE;
-        }
-
-        pkt.calBucketMask = gCalibration.mainBucketsValidMask();
-
-        if (gCalibration.active())
-        {
-            if (!gCalibration.isClockwiseComplete())
-            {
-                pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::Clockwise);
-            }
-            else
-            {
-                pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::CounterClockwise);
-            }
-        }
-        else
-        {
-            pkt.calPhase = static_cast<uint8_t>(RemoteCalPhase::None);
-        }
-    */
+   
     static uint32_t lastStatusR1Ms = 0;
     static uint32_t lastStatusR2Ms = 0;
 

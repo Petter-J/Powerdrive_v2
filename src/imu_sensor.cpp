@@ -41,7 +41,7 @@ void ImuSensor::setHeadingOffset(float offsetDeg)
     _headingOffsetDeg = offsetDeg;
 }
 
-void ImuSensor::setCorrectionTable(const HeadingCorrectionPoint *table, uint8_t count)
+/*void ImuSensor::setCorrectionTable(const HeadingCorrectionPoint *table, uint8_t count)
 {
     _correctionTable = table;
     _correctionCount = count;
@@ -54,7 +54,7 @@ float ImuSensor::correctHeading(float raw)
         _correctionTable,
         _correctionCount);
 }
-
+*/
 void ImuSensor::update(ImuHeading &out)
 {
     BNO08x_RVC_Data rvcData;
@@ -80,7 +80,7 @@ void ImuSensor::update(ImuHeading &out)
     float headingDeg = rvcData.yaw;
     headingDeg += _headingOffsetDeg;
     headingDeg = wrap360(headingDeg);
-    headingDeg = correctHeading(headingDeg);
+    // headingDeg = correctHeading(headingDeg);
 
     _headingDeg = headingDeg;
     _pitchDeg = rvcData.pitch;
