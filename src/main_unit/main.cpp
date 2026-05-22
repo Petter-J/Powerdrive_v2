@@ -26,7 +26,6 @@ static ButtonManager gButtons;
 static InputLogic gInputLogic;
 static Navigation gNavigation;
 
-static uint32_t gCalibrationCommandId = 1;
 
 // ============================================================
 // Local button read

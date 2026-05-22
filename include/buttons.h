@@ -46,7 +46,6 @@ struct ButtonOutput
     bool thrustDownHeld = false;
     bool steerLeftHeld = false;
     bool steerRightHeld = false;
-    bool requestCalibration = false;
     bool anchorHeld = false;
     bool requestOta = false;
 };
