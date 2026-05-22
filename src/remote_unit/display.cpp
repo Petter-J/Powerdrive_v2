@@ -46,7 +46,7 @@ static constexpr uint16_t COLOR_MANUAL = ILI9341_YELLOW;
 static constexpr uint16_t COLOR_AUTO = ILI9341_CYAN;
 static constexpr uint16_t COLOR_ANCHOR = ILI9341_GREEN;
 static constexpr uint16_t COLOR_STOP = ILI9341_RED;
-static constexpr uint16_t COLOR_CAL = ILI9341_MAGENTA;
+static constexpr uint16_t COLOR_OTA = ILI9341_MAGENTA;
 
 bool display_is_available()
 {
@@ -214,7 +214,6 @@ enum ScreenType : uint8_t
 {
     SCREEN_NO_DATA,
     SCREEN_OTA,
-    SCREEN_CAL,
     SCREEN_NORMAL
 };
 
@@ -222,9 +221,7 @@ static ScreenType getScreenType(
     bool hasStatus,
     bool linkAlive,
     bool linkLostTooLong,
-    const StatusPacket &status,
-    bool calActive,
-    bool calComplete)
+    const StatusPacket &status)
 {
     if (!hasStatus || linkLostTooLong)
         return SCREEN_NO_DATA;
@@ -234,9 +231,6 @@ static ScreenType getScreenType(
     {
         return SCREEN_OTA;
     }
-
-    if (calActive || calComplete)
-        return SCREEN_CAL;
 
     return SCREEN_NORMAL;
 }
@@ -313,10 +307,6 @@ void display_update(
     bool hasStatus,
     uint32_t buttonMask,
     bool linkAlive,
-    bool calActive,
-    bool calComplete,
-    uint16_t calBucketMask,
-    uint8_t calPhase,
     bool localBoatHeadingValid,
     float localBoatHeadingDeg)
 {
@@ -326,11 +316,9 @@ void display_update(
 
     static bool firstDraw = true;
     static ScreenType lastScreenType = SCREEN_NO_DATA;
-
     static uint8_t lastMode = 255;
     static bool lastLinkAlive = false;
     static uint32_t lastButtonMask = 0;
-
     static uint8_t lastManualThrustPct = 255;
     static uint16_t lastTargetHeadingDeg10 = 65535;
     static uint16_t lastTargetSpeedCmps = 65535;
@@ -340,13 +328,9 @@ void display_update(
     static uint16_t lastMotorHeadingDeg10 = 65535;
     static uint8_t lastMotorTiltUnsafe = 255;
     static int8_t lastSteerState = 99;
-
     static uint8_t lastSatellites = 255;
     static uint8_t lastSatellitesInView = 255;
     static uint8_t lastFlags = 255;
-    static uint16_t lastCalBucketMask = 65535;
-    static uint8_t lastCalPhase = 255;
-
     static uint32_t linkLostSinceMs = 0;
 
     if (linkAlive)
@@ -367,9 +351,7 @@ void display_update(
             hasStatus,
             linkAlive,
             linkLostTooLong,
-            status,
-            calActive,
-            calComplete);
+            status);
 
     const bool screenChanged =
         firstDraw || (screenType != lastScreenType);
@@ -423,14 +405,10 @@ void display_update(
     {
         if (screenType == SCREEN_OTA)
         {
-            tft.fillRect(0, HEADER_Y, W, HEADER_H, COLOR_CAL);
+            tft.fillRect(0, HEADER_Y, W, HEADER_H, COLOR_OTA);
             drawCenteredText("OTA", W / 2, 8, 3, ILI9341_BLACK);
         }
-        else if (screenType == SCREEN_CAL)
-        {
-            tft.fillRect(0, HEADER_Y, W, HEADER_H, COLOR_CAL);
-            drawCenteredText("CAL", W / 2, 8, 3, ILI9341_BLACK);
-        }
+        
         else
         {
             drawHeader(status.mode);
@@ -442,7 +420,7 @@ void display_update(
         if (screenChanged)
         {
             clearMainRows();
-            drawCenteredText("OTA", W / 2, ROW1_Y + 4, 4, COLOR_CAL);
+            drawCenteredText("OTA", W / 2, ROW1_Y + 4, 4, COLOR_OTA);
             drawCenteredText("UPDATE MODE", W / 2, ROW2_Y + 10, 3, COLOR_TEXT);
             drawCenteredText("192.168.4.1", W / 2, ROW3_Y + 10, 3, COLOR_TEXT);
         }
@@ -453,64 +431,7 @@ void display_update(
         goto save_state;
     }
 
-    if (screenType == SCREEN_CAL)
-    {
-        if (screenChanged || calBucketMask != lastCalBucketMask || calPhase != lastCalPhase)
-        {
-            clearRow1();
-
-            char calLine1[32];
-
-            if (calComplete)
-            {
-                snprintf(calLine1, sizeof(calLine1), "DONE");
-            }
-            else
-            {
-                uint8_t count = 0;
-
-                for (uint8_t i = 0; i < 16; i++)
-                {
-                    if (calBucketMask & (1 << i))
-                        count++;
-                }
-
-                const char *phaseText = "--";
-
-                if (calPhase == 1)
-                    phaseText = "CW";
-                else if (calPhase == 2)
-                    phaseText = "CCW";
-
-                snprintf(calLine1, sizeof(calLine1), "%s %u/16", phaseText, count);
-            }
-
-            drawCenteredText(calLine1, W / 2, ROW1_Y + 2, 4, COLOR_CAL);
-        }
-
-        if (screenChanged || status.gpsSpeedCmps != lastGpsSpeedCmps)
-        {
-            clearRow2();
-
-            char spdLine[32];
-            snprintf(spdLine, sizeof(spdLine), "SPD %.1f M/S", status.gpsSpeedCmps / 100.0f);
-            drawCenteredText(spdLine, W / 2, ROW2_Y + 8, 3, COLOR_TEXT);
-        }
-
-        if (screenChanged || status.gpsCogDeg10 != lastGpsCogDeg10)
-        {
-            clearRow3();
-
-            char cogLine[32];
-            snprintf(cogLine, sizeof(cogLine), "COG %u", status.gpsCogDeg10 / 10);
-            drawCenteredText(cogLine, W / 2, ROW3_Y + 8, 3, COLOR_TEXT);
-        }
-
-        if (footerChanged)
-            drawFooter(status, linkAlive, buttonMask);
-
-        goto save_state;
-    }
+    
 
     if (modeChanged)
     {
@@ -655,7 +576,6 @@ save_state:
     lastScreenType = screenType;
     lastLinkAlive = linkAlive;
     lastButtonMask = buttonMask;
-
     lastMode = status.mode;
     lastManualThrustPct = status.manualThrustPct;
     lastTargetHeadingDeg10 = status.targetHeadingDeg10;
@@ -666,10 +586,8 @@ save_state:
     lastMotorHeadingDeg10 = status.motorHeadingDeg10;
     lastMotorTiltUnsafe = status.motorTiltUnsafe;
     lastSteerState = status.steerState;
-
     lastSatellites = status.satellites;
     lastSatellitesInView = status.satellitesInView;
     lastFlags = status.flags;
-    lastCalBucketMask = calBucketMask;
-    lastCalPhase = calPhase;
+   
 }

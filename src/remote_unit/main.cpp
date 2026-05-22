@@ -5,7 +5,7 @@
 #include "imu_sensor.h"
 #include "remote_protocol.h"
 #include "display.h"
-// #include "remote_calibration.h"
+
 #include "config.h"
 #include "ota_update.h"
 
@@ -62,7 +62,7 @@ static ImuSensor gBoatImu;
 static ImuHeading gBoatHeading;
 static bool gBoatImuStarted = false;
 
-// static RemoteCalibration gRemoteCalibration;
+
 
 // ============================================================
 // BUTTON READ
@@ -116,51 +116,7 @@ void onRecv(const uint8_t *, const uint8_t *data, int len)
         gLastStatusMs = millis();
         return;
     }
-    /*
-        // Kalibreringspaket från Main
-        const uint8_t msgType = data[0];
-
-        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalStartSweep) &&
-            len == (int)sizeof(CalStartSweepPacket))
-        {
-            CalStartSweepPacket packet;
-            memcpy(&packet, data, sizeof(packet));
-            gRemoteCalibration.startSweep(packet);
-            return;
-        }
-
-        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalBucketSample) &&
-            len == (int)sizeof(CalBucketSamplePacket))
-        {
-            CalBucketSamplePacket packet;
-            memcpy(&packet, data, sizeof(packet));
-
-            if (gBoatHeading.valid)
-            {
-                gRemoteCalibration.addBucketSample(packet, gBoatHeading.headingDeg);
-            }
-
-            return;
-        }
-
-        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalSaveBoatLutPoint) &&
-            len == (int)sizeof(CalSaveBoatLutPointPacket))
-        {
-            CalSaveBoatLutPointPacket packet;
-            memcpy(&packet, data, sizeof(packet));
-            gRemoteCalibration.saveBoatLutPoint(packet);
-            return;
-        }
-
-        if (msgType == static_cast<uint8_t>(RemoteMsgType::CalEndSweep) &&
-            len == (int)sizeof(CalEndSweepPacket))
-        {
-            CalEndSweepPacket packet;
-            memcpy(&packet, data, sizeof(packet));
-            gRemoteCalibration.endSweep(packet);
-            return;
-        }
-            */
+    
 }
 
 // ============================================================
@@ -168,14 +124,9 @@ void onRecv(const uint8_t *, const uint8_t *data, int len)
 // ============================================================
 void setup()
 {
-    Serial.begin(115200);
-    delay(500);
 
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
-
-    Serial.print("REMOTE MAC: ");
-    Serial.println(WiFi.macAddress());
 
     display_begin();
     delay(100);
@@ -207,15 +158,12 @@ void setup()
 
             display_update(
                 gStatus,
-                true, // hasStatus
-                0,    // buttonMask
-                true, // linkAlive
-                false,
-                false,
+                true,
                 0,
-                0,
+                true,
                 false,
                 0.0f);
+            ;
 
             delay(50);
         }
@@ -232,8 +180,7 @@ void setup()
     pinMode(RemoteButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
     if (esp_now_init() != ESP_OK)
-    {
-        Serial.println("ESP-NOW init failed");
+    {  
         return;
     }
 
@@ -247,8 +194,7 @@ void setup()
 
     esp_now_add_peer(&peer);
 
-    // gRemoteCalibration.begin();
-    delay(100);
+    
 
     gBoatImuStarted = gBoatImu.begin(
         BoatCompassConfig::RX_PIN,
@@ -256,14 +202,7 @@ void setup()
         BoatCompassConfig::BAUD,
         BoatCompassConfig::B_HEADING_OFFSET_DEG);
 
-    if (gBoatImuStarted)
-    {
-        Serial.println("[REMOTE] Boat IMU started");
-    }
-    else
-    {
-        Serial.println("[REMOTE] Boat IMU not found");
-    }
+    
 }
 
 // ============================================================
@@ -319,17 +258,12 @@ void loop()
 
     if (ota_is_active())
     {
-        display_set_local_ota(true);
 
         display_update(
             gStatus,
             true,
             buttonMask,
             true,
-            false,
-            false,
-            0,
-            0,
             gBoatHeading.valid,
             gBoatHeading.headingDeg);
 
@@ -340,25 +274,6 @@ void loop()
         gBoatImu.update(gBoatHeading);
     }
 
-    /*if (gRemoteCalibration.hasPendingBucketResult())
-     {
-         CalBoatBucketResultPacket result =
-             gRemoteCalibration.takePendingBucketResult();
-
-         esp_now_send(RECEIVER_MAC,
-                      reinterpret_cast<const uint8_t *>(&result),
-                      sizeof(result));
-     }
- */
-    static uint32_t lastBoatPrintMs = 0;
-    if (now - lastBoatPrintMs >= 1000)
-    {
-        lastBoatPrintMs = now;
-        Serial.printf("[BOAT IMU] valid=%d hdg=%.1f acc=%u\n",
-                      gBoatHeading.valid ? 1 : 0,
-                      gBoatHeading.headingDeg,
-                      gBoatHeading.accuracy);
-    }
 
     // Skicka knappar + boat heading
     const bool changed = (buttonMask != lastSentMask);
@@ -372,19 +287,22 @@ void loop()
         RemotePacket pkt = {};
         pkt.buttonMask = buttonMask;
 
-        pkt.boatHeadingDeg10 = 0;
-        pkt.boatFlags = 0;
+        static uint16_t lastBoatHeadingDeg10 = 0;
+        static uint8_t lastBoatFlags = 0;
 
         if (gBoatHeading.valid &&
             isfinite(gBoatHeading.headingDeg) &&
             gBoatHeading.headingDeg >= 0.0f &&
             gBoatHeading.headingDeg < 360.0f)
         {
-            pkt.boatHeadingDeg10 =
+            lastBoatHeadingDeg10 =
                 (uint16_t)roundf(gBoatHeading.headingDeg * 10.0f);
 
-            pkt.boatFlags = REMOTE_FLAG_BOAT_IMU_VALID;
+            lastBoatFlags = REMOTE_FLAG_BOAT_IMU_VALID;
         }
+
+        pkt.boatHeadingDeg10 = lastBoatHeadingDeg10;
+        pkt.boatFlags = lastBoatFlags;
 
         esp_now_send(RECEIVER_MAC,
                      reinterpret_cast<const uint8_t *>(&pkt),
@@ -405,10 +323,6 @@ void loop()
             gHasStatus,
             buttonMask,
             linkAlive,
-            (gStatus.calFlags & STATUS_CAL_FLAG_ACTIVE) != 0,
-            (gStatus.calFlags & STATUS_CAL_FLAG_COMPLETE) != 0,
-            gStatus.calBucketMask,
-            gStatus.calPhase,
             gBoatHeading.valid,
             gBoatHeading.headingDeg);
     }
