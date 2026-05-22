@@ -21,8 +21,6 @@ public:
 
     bool sendStatus(const StatusPacket &status);
 
-    bool sendCalibrationPacket(const uint8_t *data, size_t len);
-    bool getBoatCalibrationResult(CalBoatBucketResultPacket &outPacket);
 
     uint32_t getCombinedMask(uint32_t nowMs) const;
     uint32_t lastRxTimeMs() const;
@@ -48,6 +46,5 @@ private:
     bool _boatImuValid = false;
     uint32_t _boatImuLastRxTimeMs = 0;
 
-    bool _hasBoatCalibrationResult = false;
-    CalBoatBucketResultPacket _boatCalibrationResult;
+    
 };

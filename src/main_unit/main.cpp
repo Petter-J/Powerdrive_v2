@@ -399,7 +399,7 @@ void loop()
     else
         pkt.counter = 0;
 
-    pkt.calFlags = 0;
+    
    
     static uint32_t lastStatusR1Ms = 0;
     static uint32_t lastStatusR2Ms = 0;

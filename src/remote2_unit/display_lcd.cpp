@@ -34,7 +34,7 @@ static constexpr uint16_t COLOR_MANUAL     = ST77XX_YELLOW;
 static constexpr uint16_t COLOR_AUTO       = ST77XX_CYAN;
 static constexpr uint16_t COLOR_ANCHOR     = ST77XX_GREEN;
 static constexpr uint16_t COLOR_STOP       = ST77XX_RED;
-static constexpr uint16_t COLOR_CAL        = ST77XX_MAGENTA;
+static constexpr uint16_t COLOR_OTA        = ST77XX_MAGENTA;
 
 // =====================================================
 // ROWS
@@ -107,7 +107,6 @@ enum ScreenType : uint8_t
 {
     SCREEN_NO_DATA,
     SCREEN_OTA,
-    SCREEN_CAL,
     SCREEN_NORMAL
 };
 
@@ -115,9 +114,7 @@ static ScreenType getScreenType(
     bool hasStatus,
     bool linkAlive,
     bool linkLostTooLong,
-    const StatusPacket &status,
-    bool calActive,
-    bool calComplete)
+    const StatusPacket &status)
 {
     if (!hasStatus || linkLostTooLong)
         return SCREEN_NO_DATA;
@@ -125,12 +122,8 @@ static ScreenType getScreenType(
     if ((status.flags & STATUS_FLAG_OTA_ACTIVE) != 0)
         return SCREEN_OTA;
 
-    if (calActive || calComplete)
-        return SCREEN_CAL;
-
     return SCREEN_NORMAL;
 }
-
 static uint16_t headingDisplayDeg(uint16_t deg10)
 {
     return deg10 / 10;
@@ -241,11 +234,7 @@ void display_lcd_update(
     const StatusPacket &status,
     bool hasStatus,
     uint32_t buttonMask,
-    bool linkAlive,
-    bool calActive,
-    bool calComplete,
-    uint16_t calBucketMask,
-    uint8_t calPhase)
+    bool linkAlive)
 {
     static bool firstDraw = true;
     static ScreenType lastScreenType = SCREEN_NO_DATA;
@@ -268,8 +257,7 @@ void display_lcd_update(
     static uint8_t lastSatellitesInView = 255;
     static uint8_t lastFlags = 255;
     static uint16_t lastMotorHeadingDeg10 = 65535;
-    static uint16_t lastCalBucketMask = 65535;
-    static uint8_t lastCalPhase = 255;
+    
 
     static uint32_t linkLostSinceMs = 0;
 
@@ -287,7 +275,11 @@ void display_lcd_update(
         (!linkAlive && linkLostSinceMs != 0 && (millis() - linkLostSinceMs >= 5000));
 
     const ScreenType screenType =
-        getScreenType(hasStatus, linkAlive, linkLostTooLong, status, calActive, calComplete);
+        getScreenType(
+            hasStatus,
+            linkAlive,
+            linkLostTooLong,
+            status);
 
     const bool screenChanged =
         firstDraw || (screenType != lastScreenType);
@@ -345,14 +337,10 @@ void display_lcd_update(
     {
         if (screenType == SCREEN_OTA)
         {
-            tft.fillRect(0, HEADER_Y, 240, HEADER_H, COLOR_CAL);
+            tft.fillRect(0, HEADER_Y, 240, HEADER_H, COLOR_OTA);
             drawCenteredText("OTA", 120, 10, 4, ST77XX_BLACK);
         }
-        else if (screenType == SCREEN_CAL)
-        {
-            tft.fillRect(0, HEADER_Y, 240, HEADER_H, COLOR_CAL);
-            drawCenteredText("CAL", 120, 10, 4, ST77XX_BLACK);
-        }
+        
         else
         {
             drawHeader(status.mode);
@@ -367,7 +355,7 @@ void display_lcd_update(
         if (screenChanged)
         {
             clearMainRows();
-            drawCenteredText("OTA", 120, ROW1_Y + 15, 4, COLOR_CAL);
+            drawCenteredText("OTA", 120, ROW1_Y + 15, 4, COLOR_OTA);
             drawCenteredText("UPDATE MODE", 120, ROW2_Y + 20, 3, COLOR_TEXT);
             drawCenteredText("192.168.4.1", 120, ROW3_Y + 20, 3, COLOR_TEXT);
         }
@@ -378,68 +366,7 @@ void display_lcd_update(
         goto save_state;
     }
 
-    // =========================
-    // CAL
-    // =========================
-    if (screenType == SCREEN_CAL)
-    {
-        if (screenChanged || calBucketMask != lastCalBucketMask || calPhase != lastCalPhase)
-        {
-            clearRow1();
-
-            char calLine1[32];
-
-            if (calComplete)
-            {
-                snprintf(calLine1, sizeof(calLine1), "DONE");
-            }
-            else
-            {
-                uint8_t count = 0;
-
-                for (uint8_t i = 0; i < 16; i++)
-                {
-                    if (calBucketMask & (1 << i))
-                        count++;
-                }
-
-                const char *phaseText = "--";
-
-                if (calPhase == 1)
-                    phaseText = "CW";
-                else if (calPhase == 2)
-                    phaseText = "CCW";
-
-                snprintf(calLine1, sizeof(calLine1), "%s %u/16", phaseText, count);
-            }
-
-            drawCenteredText(calLine1, 120, ROW1_Y + 10, 5, COLOR_CAL);
-        }
-
-        if (screenChanged || status.gpsSpeedCmps != lastGpsSpeedCmps)
-        {
-            clearRow2();
-
-            char spdLine[32];
-            snprintf(spdLine, sizeof(spdLine), "SPD %.1f M/S", status.gpsSpeedCmps / 100.0f);
-            drawCenteredText(spdLine, 120, ROW2_Y + 15, 3, COLOR_TEXT);
-        }
-
-        if (screenChanged || status.gpsCogDeg10 != lastGpsCogDeg10)
-        {
-            clearRow3();
-
-            char cogLine[32];
-            snprintf(cogLine, sizeof(cogLine), "COG %u", status.gpsCogDeg10 / 10);
-            drawCenteredText(cogLine, 120, ROW3_Y + 15, 3, COLOR_TEXT);
-        }
-
-        if (footerChanged)
-            drawFooter(status, linkAlive, buttonMask);
-
-        goto save_state;
-    }
-
+  
     // =========================
     // NORMAL MODE
     // =========================
@@ -607,6 +534,5 @@ save_state:
     lastSatellites = status.satellites;
     lastSatellitesInView = status.satellitesInView;
     lastFlags = status.flags;
-    lastCalBucketMask = calBucketMask;
-    lastCalPhase = calPhase;
+    
 }

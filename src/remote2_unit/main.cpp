@@ -196,10 +196,6 @@ void loop()
             gStatus,
             gHasStatus,
             buttonMask,
-            linkAlive,
-            (gStatus.calFlags & STATUS_CAL_FLAG_ACTIVE) != 0,
-            (gStatus.calFlags & STATUS_CAL_FLAG_COMPLETE) != 0,
-            gStatus.calBucketMask,
-            gStatus.calPhase);
+            linkAlive);
     }
 }
