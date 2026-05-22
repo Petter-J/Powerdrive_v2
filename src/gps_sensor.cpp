@@ -11,10 +11,15 @@ bool GpsSensor::begin()
 
 void GpsSensor::update(GpsFix &out)
 {
-    while (_serial.available())
+    uint16_t bytesRead = 0;
+    static constexpr uint16_t MAX_GPS_BYTES_PER_UPDATE = 256;
+
+    while (_serial.available() &&
+           bytesRead < MAX_GPS_BYTES_PER_UPDATE)
     {
         char c = _serial.read();
         _gps.encode(c);
+        bytesRead++;
     }
 
     out.locationValid =

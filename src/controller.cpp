@@ -188,7 +188,7 @@ void applyCommand(const RemoteCommand &cmd, SystemState &sys, MainController &co
     if (sys.mode != oldMode)
     {
         controller.onModeChanged(sys.mode, sys);
-        DBG_PRINTF("[MODE] -> %s\n", modeToString(sys.mode));
+        
     }
 
     if (cmd.hasManualThrust)

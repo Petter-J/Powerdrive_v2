@@ -61,37 +61,7 @@ static uint32_t readLocalButtons()
     return mask;
 }
 
-// ============================================================
-// Helpers
-// ============================================================
-static void printTelemetry(const SystemState &sys)
-{
-    DBG_PRINTF(
-        "[TEL] mode=%s auto=%s hdg=%.1f hdgSrc=%s hdgValid=%d boat=%.1f boatV=%d motor=%.1f motorV=%d mAng=%.1f gpsValid=%d spdValid=%d sats=%u lat=%.6f lon=%.6f gpsSpd=%.2f speedMps=%.2f cog=%.1f spdPct=%.1f tgtH=%.1f tgtS=%.1f actT=%.1f actS=%.1f\n",
-        modeToString(sys.mode),
-        sys.sensors.autoState,
-        sys.sensors.headingDeg,
-        sys.sensors.headingSource,
-        sys.sensors.headingValid ? 1 : 0,
-        sys.sensors.boatHeadingDeg,
-        sys.sensors.boatImuValid ? 1 : 0,
-        sys.sensors.motorHeadingDeg,
-        sys.sensors.motorImuValid ? 1 : 0,
-        sys.sensors.motorAngleDeg,
-        sys.sensors.gpsValid ? 1 : 0,
-        sys.sensors.speedValid ? 1 : 0,
-        sys.sensors.satellites,
-        sys.sensors.latitudeDeg,
-        sys.sensors.longitudeDeg,
-        sys.sensors.gpsSpeedMps,
-        sys.sensors.speedMps,
-        sys.sensors.courseOverGroundDeg,
-        sys.sensors.speedPct,
-        sys.targetHeadingDeg,
-        sys.targetSpeedPct,
-        sys.actuators.thrustPct,
-        sys.actuators.steerPct);
-}
+
 // ============================================================
 // Setup
 // ============================================================
@@ -150,10 +120,6 @@ void setup()
     if (ButtonPins::STEER_RIGHT >= 0)
         pinMode(ButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
-    DBG_PRINTLN("");
-    DBG_PRINTLN("=======================================");
-    DBG_PRINTLN("ESP32 Trolling Motor Controller - Boot");
-    DBG_PRINTLN("=======================================");
 
     // init safe state först
     gSys.mode = SystemMode::STOP;
@@ -174,7 +140,7 @@ void setup()
     gNavigation.begin();
     
 
-    DBG_PRINTLN("Buttons active, serial control removed.");
+    
 }
 
 // ============================================================
@@ -184,9 +150,8 @@ void loop()
 {
     static uint32_t lastMainMs = 0;
     static uint32_t lastControlMs = 0;
-    static uint32_t lastPrintMs = 0;
-
     const uint32_t now = millis();
+    static uint32_t maxWorkDtMs = 0;
 
     // Main loop pacing
     if (now - lastMainMs < TimingConfig::MAIN_LOOP_INTERVAL_MS)
@@ -195,8 +160,23 @@ void loop()
     }
     lastMainMs = now;
 
+    // Starta mätning av verklig arbetstid
+    const uint32_t workStartMs = millis();
+
     // 1. Read local buttons
     const uint32_t localMask = readLocalButtons();
+
+    static bool stopWasPressed = false;
+
+    const bool stopPressed =
+        (localMask & buttonBit(ButtonId::STOP)) != 0;
+
+    if (stopPressed && !stopWasPressed)
+    {
+        maxWorkDtMs = 0;
+    }
+
+    stopWasPressed = stopPressed;
 
     // Emergency OTA: local STOP held 5 sec
     static uint32_t earlyOtaStopHoldStartMs = 0;
@@ -315,6 +295,9 @@ void loop()
     pkt.targetSpeedCmps = (uint16_t)roundf(gSys.targetSpeedMps * 100.0f);
     pkt.gpsCogDeg10 = (uint16_t)roundf(gSys.sensors.courseOverGroundDeg * 10.0f);
 
+    pkt.counter =
+        (uint8_t)min(maxWorkDtMs, (uint32_t)255);
+
     if (gSys.sensors.boatHeadingWorldValid)
     {
         pkt.boatHeadingDeg10 =
@@ -368,38 +351,38 @@ void loop()
     {
         pkt.flags |= STATUS_FLAG_OTA_ACTIVE;
     }
+    /*
+        if (gSys.mode != SystemMode::ANCHOR)
+        {
+            pkt.counter = 0;
+        }
+        else if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)
+            pkt.counter = 1;
+        else if (strcmp(gSys.sensors.autoState, "A_GPSAVG") == 0)
+            pkt.counter = 2;
+        else if (strcmp(gSys.sensors.autoState, "L_HOLD") == 0)
+            pkt.counter = 3;
+        else if (strcmp(gSys.sensors.autoState, "L_DRIFT") == 0)
+            pkt.counter = 4;
+        else if (strcmp(gSys.sensors.autoState, "LEARN_RET") == 0)
+            pkt.counter = 5;
+        else if (strcmp(gSys.sensors.autoState, "HOLD") == 0)
+            pkt.counter = 6;
+        else if (strcmp(gSys.sensors.autoState, "DRIFT") == 0)
+            pkt.counter = 7;
+        else if (strcmp(gSys.sensors.autoState, "RETURN") == 0)
+            pkt.counter = 8;
+        else if (strcmp(gSys.sensors.autoState, "M_HOLD") == 0)
+            pkt.counter = 9;
+        else if (strcmp(gSys.sensors.autoState, "MAINTAIN") == 0)
+            pkt.counter = 10;
+        else if (strcmp(gSys.sensors.autoState, "M_RETURN") == 0)
+            pkt.counter = 11;
+        else
+            pkt.counter = 0;
 
-    if (gSys.mode != SystemMode::ANCHOR)
-    {
-        pkt.counter = 0;
-    }
-    else if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)
-        pkt.counter = 1;
-    else if (strcmp(gSys.sensors.autoState, "A_GPSAVG") == 0)
-        pkt.counter = 2;
-    else if (strcmp(gSys.sensors.autoState, "L_HOLD") == 0)
-        pkt.counter = 3;
-    else if (strcmp(gSys.sensors.autoState, "L_DRIFT") == 0)
-        pkt.counter = 4;
-    else if (strcmp(gSys.sensors.autoState, "LEARN_RET") == 0)
-        pkt.counter = 5;
-    else if (strcmp(gSys.sensors.autoState, "HOLD") == 0)
-        pkt.counter = 6;
-    else if (strcmp(gSys.sensors.autoState, "DRIFT") == 0)
-        pkt.counter = 7;
-    else if (strcmp(gSys.sensors.autoState, "RETURN") == 0)
-        pkt.counter = 8;
-    else if (strcmp(gSys.sensors.autoState, "M_HOLD") == 0)
-        pkt.counter = 9;
-    else if (strcmp(gSys.sensors.autoState, "MAINTAIN") == 0)
-        pkt.counter = 10;
-    else if (strcmp(gSys.sensors.autoState, "M_RETURN") == 0)
-        pkt.counter = 11;
-    else
-        pkt.counter = 0;
+        */
 
-    
-   
     static uint32_t lastStatusR1Ms = 0;
     static uint32_t lastStatusR2Ms = 0;
 
@@ -418,11 +401,10 @@ void loop()
         StatusPacket pkt2 = pkt;
         gRemote.sendStatusRemote2(pkt2);
     }
+    uint32_t workDtMs = millis() - workStartMs;
 
-    // 12. Telemetry
-    if (now - lastPrintMs >= TimingConfig::PRINT_INTERVAL_MS)
+    if (workDtMs > maxWorkDtMs)
     {
-        lastPrintMs = now;
-        printTelemetry(gSys);
+        maxWorkDtMs = workDtMs;
     }
 }

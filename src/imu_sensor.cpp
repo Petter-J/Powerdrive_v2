@@ -19,11 +19,9 @@ bool ImuSensor::begin(int rxPin, int txPin, uint32_t baud, float headingOffsetDe
 
     if (!_rvc.begin(&_serial))
     {
-        Serial.println("[IMU] BNO085 RVC not found on UART");
         return false;
     }
 
-    Serial.println("[IMU] BNO085 RVC started on UART");
     return true;
 }
 

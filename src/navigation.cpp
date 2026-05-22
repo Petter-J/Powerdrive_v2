@@ -11,11 +11,6 @@ bool Navigation::begin()
         CompassConfig::BAUD,
         CompassConfig::M_HEADING_OFFSET_DEG);
 
-    Serial.printf(
-        "[NAV] begin gps=%d imu=%d\n",
-        gpsOk ? 1 : 0,
-        imuOk ? 1 : 0);
-
     return gpsOk || imuOk;
 }
 
@@ -27,7 +22,8 @@ void Navigation::update(SensorData &sensors)
 
     const uint32_t now = millis();
 
-    _gps.update(gpsFix);
+    // GPS TEST AVSTÄNGD
+    gpsFix = {};
 
     if (now - lastMotorImuUpdateMs >= 20)
     {

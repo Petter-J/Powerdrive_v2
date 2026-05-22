@@ -93,8 +93,7 @@ void RemoteEspNow::begin()
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
 
-    esp_err_t addPeerResult1 = esp_now_add_peer(&peerInfo);
-    DBG_PRINTF("add_peer remote1 result = %d\n", addPeerResult1);
+    esp_now_add_peer(&peerInfo);
 
     // Lägg till remote 2
     memset(&peerInfo, 0, sizeof(peerInfo));
@@ -102,8 +101,7 @@ void RemoteEspNow::begin()
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
 
-    esp_err_t addPeerResult2 = esp_now_add_peer(&peerInfo);
-    DBG_PRINTF("add_peer remote2 result = %d\n", addPeerResult2);
+    esp_now_add_peer(&peerInfo);
 
     s_instance = this;
     _initialized = true;

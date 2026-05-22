@@ -12,9 +12,7 @@ void ButtonManager::begin()
         _pressStartMs[i] = 0;
         _longReported[i] = false;
     }
-    _calComboStartMs = 0;
-    _calComboReported = false;
-
+   
     _otaComboStartMs = 0;
     _otaComboReported = false;
 }
