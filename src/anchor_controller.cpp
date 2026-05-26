@@ -301,47 +301,50 @@ ActuatorCommand AnchorController::update(float dtSec, SystemState &sys, PidContr
     const bool inZone5 = (distRawM >= startRadiusM);
     const bool inZone4 = !inZone3 && !inZone5;
 
-    if (mWasInsideRadius)
+    if (sys.sensors.locationUpdated)
     {
-        if (inZone4 && mDriftZoneHits < START_CONFIRM_COUNT)
+        if (mWasInsideRadius)
         {
-            mDriftZoneHits++;
-        }
+            if (inZone4 && mDriftZoneHits < START_CONFIRM_COUNT)
+            {
+                mDriftZoneHits++;
+            }
 
-        if (mDriftZoneHits >= START_CONFIRM_COUNT)
+            if (mDriftZoneHits >= START_CONFIRM_COUNT)
+            {
+                if (inZone3)
+                {
+                    mDriftZoneHits = 0;
+                }
+                else if (inZone5 && mStartZoneHits < START_CONFIRM_COUNT)
+                {
+                    mStartZoneHits++;
+                }
+            }
+
+            mStopZoneHits = 0;
+        }
+        else
         {
-            if (inZone3)
+            if (inZone4 && mDriftZoneHits < START_CONFIRM_COUNT)
             {
-                mDriftZoneHits = 0;
+                mDriftZoneHits++;
             }
-            else if (inZone5 && mStartZoneHits < START_CONFIRM_COUNT)
-            {
-                mStartZoneHits++;
-            }
-        }
 
-        mStopZoneHits = 0;
-    }
-    else
-    {
-        if (inZone4 && mDriftZoneHits < START_CONFIRM_COUNT)
-        {
-            mDriftZoneHits++;
-        }
-
-        if (mDriftZoneHits >= START_CONFIRM_COUNT)
-        {
-            if (inZone5)
+            if (mDriftZoneHits >= START_CONFIRM_COUNT)
             {
-                mDriftZoneHits = 0;
+                if (inZone5)
+                {
+                    mDriftZoneHits = 0;
+                }
+                else if (inZone3 && mStopZoneHits < STOP_CONFIRM_COUNT)
+                {
+                    mStopZoneHits++;
+                }
             }
-            else if (inZone3 && mStopZoneHits < STOP_CONFIRM_COUNT)
-            {
-                mStopZoneHits++;
-            }
-        }
 
-        mStartZoneHits = 0;
+            mStartZoneHits = 0;
+        }
     }
 
     const bool leftZone3Confirmed =

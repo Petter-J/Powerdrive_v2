@@ -2,7 +2,13 @@
 
 bool GpsSensor::begin()
 {
-    _serial.begin(GpsConfig::BAUD, SERIAL_8N1, GpsConfig::RX_PIN, GpsConfig::TX_PIN);
+    _serial.begin(
+        GpsConfig::BAUD,
+        SERIAL_8N1,
+        GpsConfig::RX_PIN,
+        GpsConfig::TX_PIN);
+
+    _serial.setTimeout(0);
 
     _gsvSatsInView.begin(_gps, "GPGSV", 3);
 

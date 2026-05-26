@@ -50,9 +50,9 @@ namespace AnchorConfig
     // --------------------------------------------------------
     // Base thrust
     // --------------------------------------------------------
-    static constexpr float START_THRUST_PCT = 5.0f;
+    static constexpr float START_THRUST_PCT = 10.0f;
     static constexpr float MIN_THRUST_PCT = 2.0f;
-    static constexpr float MAX_THRUST_PCT = 25.0f;
+    static constexpr float MAX_THRUST_PCT = 50.0f;
 
     // Distans där full thrust används
     static constexpr float FULL_THRUST_DIST_M = 8.0f;
@@ -81,15 +81,6 @@ namespace AnchorConfig
     // Hur mycket thrust justeras per steg
     static constexpr float THRUST_ADJUST_STEP_PCT = 1.0f;
 
-    // --------------------------------------------------------
-    // Maintenance mode
-    // --------------------------------------------------------
-    // % av learned thrust i maintenance-zon
-    static constexpr float MAINTENANCE_FACTOR = 0.35f;
-
-    // Begränsningar för maintenance thrust
-    static constexpr float MIN_MAINTENANCE_THRUST_PCT = 2.0f;
-    static constexpr float MAX_MAINTENANCE_THRUST_PCT = 10.0f;
 
     // --------------------------------------------------------
     // Drift line maintenance
