@@ -62,8 +62,6 @@ static ImuSensor gBoatImu;
 static ImuHeading gBoatHeading;
 static bool gBoatImuStarted = false;
 
-
-
 // ============================================================
 // BUTTON READ
 // ============================================================
@@ -116,14 +114,15 @@ void onRecv(const uint8_t *, const uint8_t *data, int len)
         gLastStatusMs = millis();
         return;
     }
-    
 }
 
 // ============================================================
 // SETUP
 // ============================================================
 void setup()
-{    
+{
+    Serial.begin(115200);
+    delay(500);
 
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
@@ -180,7 +179,7 @@ void setup()
     pinMode(RemoteButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
     if (esp_now_init() != ESP_OK)
-    {  
+    {
         return;
     }
 
@@ -194,15 +193,11 @@ void setup()
 
     esp_now_add_peer(&peer);
 
-    
-
     gBoatImuStarted = gBoatImu.begin(
         BoatCompassConfig::RX_PIN,
         BoatCompassConfig::TX_PIN,
         BoatCompassConfig::BAUD,
         BoatCompassConfig::B_HEADING_OFFSET_DEG);
-
-    
 }
 
 // ============================================================
@@ -273,7 +268,6 @@ void loop()
     {
         gBoatImu.update(gBoatHeading);
     }
-
 
     // Skicka knappar + boat heading
     const bool changed = (buttonMask != lastSentMask);

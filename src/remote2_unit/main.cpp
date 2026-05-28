@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <cstring>
-
+#include "ota_update.h"
 #include "remote_protocol.h"
 #include "remote2/display_lcd.h"
 
@@ -31,16 +31,16 @@ constexpr uint32_t buttonBit(ButtonId id)
 // ============================================================
 namespace ButtonPins
 {
-    static constexpr int STOP         = 2;
-    static constexpr int MODE_MANUAL  = 3;
-    static constexpr int MODE_AUTO    = 16;
-    static constexpr int MODE_ANCHOR  = 17;
+    static constexpr int STOP = 2;
+    static constexpr int MODE_MANUAL = 3;
+    static constexpr int MODE_AUTO = 16;
+    static constexpr int MODE_ANCHOR = 17;
 
-    static constexpr int THRUST_UP    = 18;
-    static constexpr int THRUST_DOWN  = 10;
+    static constexpr int THRUST_UP = 18;
+    static constexpr int THRUST_DOWN = 10;
 
-    static constexpr int STEER_LEFT   = 11;
-    static constexpr int STEER_RIGHT  = 44;
+    static constexpr int STEER_LEFT = 11;
+    static constexpr int STEER_RIGHT = 44;
 }
 
 // ============================================================
@@ -92,9 +92,9 @@ static uint32_t readButtons()
 // ============================================================
 // CALLBACKS
 // ============================================================
-void onSent(const uint8_t*, esp_now_send_status_t) {}
+void onSent(const uint8_t *, esp_now_send_status_t) {}
 
-void onRecv(const uint8_t*, const uint8_t* data, int len)
+void onRecv(const uint8_t *, const uint8_t *data, int len)
 {
     if (!data || len != (int)sizeof(StatusPacket))
         return;
@@ -123,7 +123,44 @@ void setup()
     Serial.print("REMOTE2 MAC: ");
     Serial.println(WiFi.macAddress());
 
+    display_lcd_begin();
+    delay(100);
+
     pinMode(ButtonPins::STOP, INPUT_PULLUP);
+
+    const uint32_t bootStartMs = millis();
+    bool forceOta = false;
+
+    while (millis() - bootStartMs < 5000)
+    {
+        if (digitalRead(ButtonPins::STOP) == LOW)
+        {
+            forceOta = true;
+            break;
+        }
+
+        delay(10);
+    }
+
+    if (forceOta)
+    {
+        ota_begin();
+        gStatus.flags |= STATUS_FLAG_OTA_ACTIVE;
+
+        while (true)
+        {
+            ota_handle();
+
+            display_lcd_update(
+                gStatus,
+                true,
+                0,
+                true);
+
+            delay(50);
+        }
+    }
+
     pinMode(ButtonPins::MODE_MANUAL, INPUT_PULLUP);
     pinMode(ButtonPins::MODE_AUTO, INPUT_PULLUP);
     pinMode(ButtonPins::MODE_ANCHOR, INPUT_PULLUP);
@@ -133,8 +170,6 @@ void setup()
 
     pinMode(ButtonPins::STEER_LEFT, INPUT_PULLUP);
     pinMode(ButtonPins::STEER_RIGHT, INPUT_PULLUP);
-
-    display_lcd_begin();
 
     if (esp_now_init() != ESP_OK)
     {
@@ -165,7 +200,48 @@ void loop()
     const uint32_t now = millis();
     const uint32_t buttonMask = readButtons();
 
-    // Skicka knappar 
+    static uint32_t earlyOtaStopHoldStartMs = 0;
+    static bool earlyOtaTriggered = false;
+
+    const bool stopHeld =
+        (buttonMask & buttonBit(ButtonId::STOP)) != 0;
+
+    if (stopHeld)
+    {
+        if (earlyOtaStopHoldStartMs == 0)
+        {
+            earlyOtaStopHoldStartMs = millis();
+        }
+
+        if (!earlyOtaTriggered &&
+            (millis() - earlyOtaStopHoldStartMs) >= 5000)
+        {
+            earlyOtaTriggered = true;
+            ota_begin();
+        }
+    }
+    else
+    {
+        earlyOtaStopHoldStartMs = 0;
+        earlyOtaTriggered = false;
+    }
+
+    ota_handle();
+
+    if (ota_is_active())
+    {
+        gStatus.flags |= STATUS_FLAG_OTA_ACTIVE;
+
+        display_lcd_update(
+            gStatus,
+            true,
+            buttonMask,
+            true);
+
+        return;
+    }
+
+    // Skicka knappar
     const bool changed = (buttonMask != lastSentMask);
     const bool heartbeat = (now - lastSendMs >= 50);
 

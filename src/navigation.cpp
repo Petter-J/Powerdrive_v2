@@ -22,8 +22,7 @@ void Navigation::update(SensorData &sensors)
 
     const uint32_t now = millis();
 
-    // GPS TEST AVSTÄNGD
-    gpsFix = {};
+    _gps.update(gpsFix);
 
     if (now - lastMotorImuUpdateMs >= 20)
     {
