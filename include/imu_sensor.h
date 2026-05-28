@@ -44,5 +44,5 @@ private:
     
 
     uint8_t _imuFailCount = 0;
-    static constexpr uint8_t IMU_FAIL_LIMIT = 10;
+    static constexpr uint8_t IMU_FAIL_LIMIT = 50;
 };

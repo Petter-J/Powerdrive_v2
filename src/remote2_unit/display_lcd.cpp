@@ -182,10 +182,9 @@ static void drawFooter(const StatusPacket &status, bool linkAlive, uint32_t butt
     tft.setTextSize(2);
     tft.setTextColor(COLOR_WARN);
     tft.setCursor(10, 230);
-   // tft.print("S ");
+   
     tft.print(status.counter);
-    // tft.print("/");
-    // tft.print(status.satellitesInView);
+    
 
     const bool gpsOk = linkAlive && ((status.flags & STATUS_FLAG_GPS_VALID) != 0);
 
@@ -243,7 +242,6 @@ void display_lcd_update(
     static bool lastHasStatus = false;
     static bool lastLinkAlive = false;
     static uint32_t lastButtonMask = 0;
-
     static uint8_t lastManualThrustPct = 255;
     static uint16_t lastTargetHeadingDeg10 = 65535;
     static uint16_t lastTargetSpeedCmps = 65535;
@@ -252,13 +250,8 @@ void display_lcd_update(
     static uint16_t lastBoatHeadingDeg10 = 65535;
     static uint8_t lastMotorTiltUnsafe = 255;
     static int8_t lastSteerState = 99;
-
-    static uint8_t lastSatellites = 255;
-    static uint8_t lastSatellitesInView = 255;
     static uint8_t lastFlags = 255;
     static uint16_t lastMotorHeadingDeg10 = 65535;
-    
-
     static uint32_t linkLostSinceMs = 0;
 
     if (linkAlive)
@@ -292,8 +285,6 @@ void display_lcd_update(
         screenChanged ||
         linkAlive != lastLinkAlive ||
         buttonMask != lastButtonMask ||
-        status.satellites != lastSatellites ||
-        status.satellitesInView != lastSatellitesInView ||
         status.flags != lastFlags ||
         headingDisplayDeg(status.boatHeadingDeg10) != headingDisplayDeg(lastBoatHeadingDeg10) ||
         headingDisplayDeg(status.motorHeadingDeg10) != headingDisplayDeg(lastMotorHeadingDeg10);
@@ -519,7 +510,6 @@ save_state:
     lastHasStatus = hasStatus;
     lastLinkAlive = linkAlive;
     lastButtonMask = buttonMask;
-
     lastMode = status.mode;
     lastManualThrustPct = status.manualThrustPct;
     lastTargetHeadingDeg10 = status.targetHeadingDeg10;
@@ -530,9 +520,6 @@ save_state:
     lastMotorHeadingDeg10 = status.motorHeadingDeg10;
     lastMotorTiltUnsafe = status.motorTiltUnsafe;
     lastSteerState = status.steerState;
-
-    lastSatellites = status.satellites;
-    lastSatellitesInView = status.satellitesInView;
     lastFlags = status.flags;
     
 }

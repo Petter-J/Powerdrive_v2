@@ -364,8 +364,6 @@ void display_update(
         screenChanged ||
         linkAlive != lastLinkAlive ||
         buttonMask != lastButtonMask ||
-        status.satellites != lastSatellites ||
-        status.satellitesInView != lastSatellitesInView ||
         status.flags != lastFlags ||
         headingDisplayDeg(status.boatHeadingDeg10) != headingDisplayDeg(lastBoatHeadingDeg10) ||
         headingDisplayDeg(status.motorHeadingDeg10) != headingDisplayDeg(lastMotorHeadingDeg10) ||
@@ -586,8 +584,6 @@ save_state:
     lastMotorHeadingDeg10 = status.motorHeadingDeg10;
     lastMotorTiltUnsafe = status.motorTiltUnsafe;
     lastSteerState = status.steerState;
-    lastSatellites = status.satellites;
-    lastSatellitesInView = status.satellitesInView;
     lastFlags = status.flags;
    
 }

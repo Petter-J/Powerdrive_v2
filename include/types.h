@@ -13,7 +13,6 @@ enum class SystemMode : uint8_t
 enum class ControlSource : uint8_t
 {
     NONE = 0,
-    SERIAL_SIM,
     REMOTE_ESPNOW
 };
 

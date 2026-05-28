@@ -8,7 +8,7 @@ namespace ManualControlConfig
 {
     static constexpr float THRUST_START_MIN_PCT = 20.0f;
     static constexpr float THRUST_STEP_PCT = 5.0f;
-    static constexpr uint32_t REPEAT_MS = 100;
+    static constexpr uint32_t REPEAT_MS = 200;
 
     static constexpr float STEER_JOG_PCT = 60.0f; // max pwm
 }
@@ -217,13 +217,12 @@ namespace PwmConfig
 namespace TimingConfig
 {
     // Main ESP
-    static constexpr uint32_t MAIN_LOOP_INTERVAL_MS = 20;
+    static constexpr uint32_t MAIN_LOOP_INTERVAL_MS = 25;
 
     // Remote1 (boat IMU + buttons)
     static constexpr uint32_t REMOTE1_LOOP_INTERVAL_MS = 20;
 
     static constexpr uint32_t CONTROL_INTERVAL_MS = 20;
-    static constexpr uint32_t SIM_INTERVAL_MS = 20;
     static constexpr uint32_t PRINT_INTERVAL_MS = 500;
     static constexpr uint32_t HEARTBEAT_INTERVAL_MS = 500;
     static constexpr uint32_t FAILSAFE_TIMEOUT_MS = 1000;
@@ -255,15 +254,6 @@ namespace ControlDefaults
     static constexpr float SPEED_KD = 0.0f;
 }
 
-// ============================================================
-// SIMULATOR DEFAULTS
-// ============================================================
-namespace SimConfig
-{
-    static constexpr float MAX_TURN_RATE_DEG_PER_SEC = 100.0f;
-    static constexpr float SPEED_RESPONSE = 1.5f;
-    static constexpr float MAX_VIRTUAL_SPEED_MPS = 1.5f;
-}
 
 // ============================================================
 // SAFETY
@@ -289,12 +279,8 @@ namespace MotorTiltSafetyConfig
 // ============================================================
 #define ENABLE_SERIAL_DEBUG 1
 
-#if ENABLE_SERIAL_DEBUG
-#define DBG_PRINT(x) Serial.print(x)
-#define DBG_PRINTLN(x) Serial.println(x)
-#define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
-#else
-#define DBG_PRINT(x)
-#define DBG_PRINTLN(x)
+
+#define DBG_PRINT(x) 
+#define DBG_PRINTLN(x) 
 #define DBG_PRINTF(...)
-#endif
+

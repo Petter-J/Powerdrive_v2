@@ -1,5 +1,6 @@
 #include "navigation.h"
 #include <Arduino.h>
+#include "config.h"
 
 bool Navigation::begin()
 {

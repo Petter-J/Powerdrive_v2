@@ -12,12 +12,14 @@
 
 #include <cstring>
 
+extern uint32_t gGpsMaxUpdateMs;
+extern uint16_t gGpsLastBytesRead;
+extern uint16_t gGpsMaxBytesRead;
 // ============================================================
 // Globals
 // ============================================================
 static bool gDisplayLinkAlive = false;
 static uint32_t gStatusCounter = 0;
-static bool useSimulator = false; // sätt false när GPS/kompass är inkopplat
 static SystemState gSys;
 static MotorManager gMotors;
 static MainController gController;
@@ -172,10 +174,13 @@ void loop()
         (localMask & buttonBit(ButtonId::STOP)) != 0;
 
     if (stopPressed && !stopWasPressed)
-    {
-        maxWorkDtMs = 0;
-    }
+{
+    maxWorkDtMs = 0;
 
+    gGpsMaxUpdateMs = 0;
+    gGpsLastBytesRead = 0;
+    gGpsMaxBytesRead = 0;
+}
     stopWasPressed = stopPressed;
 
     // Emergency OTA: local STOP held 5 sec
@@ -296,7 +301,7 @@ void loop()
     pkt.gpsCogDeg10 = (uint16_t)roundf(gSys.sensors.courseOverGroundDeg * 10.0f);
 
     pkt.counter =
-        (uint8_t)min(maxWorkDtMs, (uint32_t)255);
+        (uint8_t)min((maxWorkDtMs), (uint32_t)255);
 
     if (gSys.sensors.boatHeadingWorldValid)
     {
@@ -324,8 +329,7 @@ void loop()
         pkt.motorHeadingDeg10 = 0;
     }
 
-    pkt.satellites = (uint8_t)gSys.sensors.satellites;
-    pkt.satellitesInView = (uint8_t)gSys.sensors.satellitesInView;
+    
 
     if (gSys.actuators.steerPct < -1.0f)
     {
@@ -394,7 +398,7 @@ void loop()
         gRemote.sendStatusRemote1(pkt1);
     }
 
-    if (now - lastStatusR2Ms >= 70)
+    if (now - lastStatusR2Ms >= 50)
     {
         lastStatusR2Ms = now;
 

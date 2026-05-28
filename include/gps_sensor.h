@@ -27,5 +27,5 @@ public:
 private:
     HardwareSerial _serial{1};
     TinyGPSPlus _gps;
-    TinyGPSCustom _gsvSatsInView;
+    
 };

@@ -112,16 +112,11 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
 
     Serial.begin(115200);
-    delay(1500);
-
+    delay(500);
+    
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     WiFi.setSleep(false);
-
-    Serial.println();
-    Serial.println("REMOTE2 START");
-    Serial.print("REMOTE2 MAC: ");
-    Serial.println(WiFi.macAddress());
 
     display_lcd_begin();
     delay(100);
@@ -172,8 +167,7 @@ void setup()
     pinMode(ButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
     if (esp_now_init() != ESP_OK)
-    {
-        Serial.println("ESP-NOW init failed");
+    {      
         return;
     }
 

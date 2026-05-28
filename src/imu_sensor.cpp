@@ -77,16 +77,5 @@ void ImuSensor::update(ImuHeading &out)
     out.valid = true;
     out.accuracy = 3;
 
-    static uint32_t lastImuPrintMs = 0;
-    const uint32_t now = millis();
-
-    if (now - lastImuPrintMs >= 1000)
-    {
-        lastImuPrintMs = now;
-        Serial.printf(
-            "[IMU] hdg=%.1f pitch=%.1f roll=%.1f\n",
-            _headingDeg,
-            _pitchDeg,
-            _rollDeg);
-    }
+    
 }

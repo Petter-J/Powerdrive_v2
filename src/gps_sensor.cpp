@@ -1,5 +1,45 @@
 #include "gps_sensor.h"
 
+uint32_t gGpsMaxUpdateMs = 0;
+uint16_t gGpsLastBytesRead = 0;
+uint16_t gGpsMaxBytesRead = 0;
+
+static void sendUbx(HardwareSerial &serial, const uint8_t *payload, uint16_t len)
+{
+    uint8_t ckA = 0;
+    uint8_t ckB = 0;
+
+    serial.write(0xB5);
+    serial.write(0x62);
+
+    for (uint16_t i = 0; i < len; i++)
+    {
+        ckA += payload[i];
+        ckB += ckA;
+        serial.write(payload[i]);
+    }
+
+    serial.write(ckA);
+    serial.write(ckB);
+}
+
+static void disableNmeaMessage(HardwareSerial &serial, uint8_t msgId)
+{
+    const uint8_t msg[] = {
+        0x06, 0x01,  // UBX-CFG-MSG
+        0x08, 0x00,  // length 8
+        0xF0, msgId, // NMEA class, message id
+        0x00,        // I2C
+        0x00,        // UART1
+        0x00,        // UART2
+        0x00,        // USB
+        0x00,        // SPI
+        0x00         // reserved
+    };
+
+    sendUbx(serial, msg, sizeof(msg));
+}
+
 bool GpsSensor::begin()
 {
     _serial.begin(
@@ -10,15 +50,30 @@ bool GpsSensor::begin()
 
     _serial.setTimeout(0);
 
-    _gsvSatsInView.begin(_gps, "GPGSV", 3);
+    delay(2000);
+
+    // Disable NMEA GSA, GSV, GLL and VTG
+    disableNmeaMessage(_serial, 0x02); // GSA
+    delay(50);
+
+    disableNmeaMessage(_serial, 0x03); // GSV
+    delay(50);
+
+    disableNmeaMessage(_serial, 0x01); // GLL
+    delay(50);
+
+    disableNmeaMessage(_serial, 0x05); // VTG
+    delay(50);
 
     return true;
 }
 
 void GpsSensor::update(GpsFix &out)
 {
+    const uint32_t gpsStartMs = millis();
+
     uint16_t bytesRead = 0;
-    static constexpr uint16_t MAX_GPS_BYTES_PER_UPDATE = 256;
+    static constexpr uint16_t MAX_GPS_BYTES_PER_UPDATE = 64;
 
     while (_serial.available() &&
            bytesRead < MAX_GPS_BYTES_PER_UPDATE)
@@ -26,6 +81,20 @@ void GpsSensor::update(GpsFix &out)
         char c = _serial.read();
         _gps.encode(c);
         bytesRead++;
+    }
+
+    gGpsLastBytesRead = bytesRead;
+
+    if (bytesRead > gGpsMaxBytesRead)
+    {
+        gGpsMaxBytesRead = bytesRead;
+    }
+
+    const uint32_t gpsDtMs = millis() - gpsStartMs;
+
+    if (gpsDtMs > gGpsMaxUpdateMs)
+    {
+        gGpsMaxUpdateMs = gpsDtMs;
     }
 
     out.locationValid =
@@ -57,7 +126,7 @@ void GpsSensor::update(GpsFix &out)
     }
 
     if (_gps.course.isValid() &&
-        _gps.course.age() < 2000 &&
+        _gps.course.age() < 1500 &&
         out.speedValid &&
         out.speedMps >= AutoConfig::MIN_GPS_COURSE_SPEED_MPS)
     {
@@ -78,23 +147,5 @@ void GpsSensor::update(GpsFix &out)
     {
         out.courseDeg = 0.0f;
         out.courseValid = false;
-    }
-
-    if (_gps.satellites.isValid() && _gps.satellites.age() < 2000)
-    {
-        out.satellites = _gps.satellites.value();
-    }
-    else
-    {
-        out.satellites = 0;
-    }
-
-    if (_gsvSatsInView.isValid())
-    {
-        out.satellitesInView = (uint8_t)atoi(_gsvSatsInView.value());
-    }
-    else
-    {
-        out.satellitesInView = 0;
     }
 }
