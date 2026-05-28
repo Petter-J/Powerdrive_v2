@@ -62,22 +62,6 @@ void NavFusion::update(
 
     s.speedPct = pct;
 
-    static bool useGpsHeading = false;
-
-    const float enterGpsSpeed = 0.6f;
-    const float leaveGpsSpeed = 0.4f;
-
-    if (gps.speedValid)
-    {
-        if (!useGpsHeading && gps.speedMps >= enterGpsSpeed)
-            useGpsHeading = true;
-        else if (useGpsHeading && gps.speedMps <= leaveGpsSpeed)
-            useGpsHeading = false;
-    }
-    else
-    {
-        useGpsHeading = false;
-    }
 
     const uint32_t nowMs = millis();
 
@@ -86,10 +70,18 @@ void NavFusion::update(
     if (imu.valid)
     {
         s.motorHeadingRawDeg = imu.headingDeg;
-        s.motorHeadingDeg = imu.headingDeg;
-        s.motorHeadingWorldDeg = wrap360(
-            imu.headingDeg + s.motorHeadingWorldOffsetDeg);
-        s.motorHeadingWorldValid = true;
+
+        if (s.motorHeadingWorldValid)
+        {
+            s.motorHeadingWorldDeg =
+                wrap360(s.motorHeadingRawDeg + s.motorHeadingWorldOffsetDeg);
+
+            s.motorHeadingDeg = s.motorHeadingWorldDeg;
+        }
+        else
+        {
+            s.motorHeadingDeg = s.motorHeadingRawDeg;
+        }
 
         s.motorPitchDeg = imu.pitchDeg;
         s.motorRollDeg = imu.rollDeg;
@@ -111,9 +103,14 @@ void NavFusion::update(
     if (s.boatImuValid)
     {
         s.boatHeadingRawDeg = s.boatHeadingDeg;
-        s.boatHeadingWorldDeg = wrap360(
-            s.boatHeadingDeg + s.boatHeadingWorldOffsetDeg);
-        s.boatHeadingWorldValid = true;
+
+        if (s.boatHeadingWorldValid)
+        {
+            s.boatHeadingWorldDeg =
+                wrap360(s.boatHeadingRawDeg + s.boatHeadingWorldOffsetDeg);
+
+            s.boatHeadingDeg = s.boatHeadingWorldDeg;
+        }
 
         lastBoatImuValidMs = nowMs;
     }
@@ -152,39 +149,29 @@ void NavFusion::update(
         worldHeadingCalibrated = true;
     }
 
-    if (motorImuUsable && boatImuUsable)
+    if (s.motorHeadingWorldValid && s.boatHeadingWorldValid)
     {
         s.motorAngleDeg =
             shortestAngleErrorDeg(
-                s.motorHeadingDeg,
-                s.boatHeadingDeg);
+                s.boatHeadingWorldDeg,
+                s.motorHeadingWorldDeg);
     }
     else
     {
         s.motorAngleDeg = 0.0f;
     }
 
-    if (useGpsHeading && gps.courseValid)
+    if (s.boatHeadingWorldValid)
     {
-        s.headingDeg = s.courseOverGroundDeg;
+        s.headingDeg = s.boatHeadingWorldDeg;
         s.headingValid = true;
-        strcpy(s.headingSource, "GPS");
+        strcpy(s.headingSource, "BH");
     }
-    else if (boatImuUsable)
+    else if (s.motorHeadingWorldValid)
     {
-        s.headingDeg = s.boatHeadingWorldValid
-                           ? s.boatHeadingWorldDeg
-                           : s.boatHeadingDeg;
+        s.headingDeg = s.motorHeadingWorldDeg;
         s.headingValid = true;
-        strcpy(s.headingSource, "BIMU");
-    }
-    else if (motorImuUsable)
-    {
-        s.headingDeg = s.motorHeadingWorldValid
-                           ? s.motorHeadingWorldDeg
-                           : s.motorHeadingDeg;
-        s.headingValid = true;
-        strcpy(s.headingSource, "MIMU");
+        strcpy(s.headingSource, "MH");
     }
     else
     {
