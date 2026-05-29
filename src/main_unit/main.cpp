@@ -12,9 +12,7 @@
 
 #include <cstring>
 
-extern uint32_t gGpsMaxUpdateMs;
-extern uint16_t gGpsLastBytesRead;
-extern uint16_t gGpsMaxBytesRead;
+
 // ============================================================
 // Globals
 // ============================================================
@@ -153,7 +151,9 @@ void loop()
     static uint32_t lastMainMs = 0;
     static uint32_t lastControlMs = 0;
     const uint32_t now = millis();
+
     static uint32_t maxWorkDtMs = 0;
+    
 
     // Main loop pacing
     if (now - lastMainMs < TimingConfig::MAIN_LOOP_INTERVAL_MS)
@@ -162,26 +162,17 @@ void loop()
     }
     lastMainMs = now;
 
-    // Starta mätning av verklig arbetstid
     const uint32_t workStartMs = millis();
+    
 
     // 1. Read local buttons
     const uint32_t localMask = readLocalButtons();
 
-    static bool stopWasPressed = false;
 
     const bool stopPressed =
         (localMask & buttonBit(ButtonId::STOP)) != 0;
 
-    if (stopPressed && !stopWasPressed)
-{
-    maxWorkDtMs = 0;
-
-    gGpsMaxUpdateMs = 0;
-    gGpsLastBytesRead = 0;
-    gGpsMaxBytesRead = 0;
-}
-    stopWasPressed = stopPressed;
+    
 
     // Emergency OTA: local STOP held 5 sec
     static uint32_t earlyOtaStopHoldStartMs = 0;
@@ -231,6 +222,15 @@ void loop()
     }
 
     const uint32_t remoteMask = remoteMaskFiltered;
+
+    static uint32_t lastRemoteMaskForReset = 0;
+
+    if (remoteMask != 0 && lastRemoteMaskForReset == 0)
+    {
+        maxWorkDtMs = 0;
+    }
+
+    lastRemoteMaskForReset = remoteMask;
 
     const uint32_t lastRx = gRemote.lastRxTimeMs();
 
@@ -300,8 +300,7 @@ void loop()
     pkt.targetSpeedCmps = (uint16_t)roundf(gSys.targetSpeedMps * 100.0f);
     pkt.gpsCogDeg10 = (uint16_t)roundf(gSys.sensors.courseOverGroundDeg * 10.0f);
 
-    pkt.counter =
-        (uint8_t)min((maxWorkDtMs), (uint32_t)255);
+    
 
     if (gSys.sensors.boatHeadingWorldValid)
     {
@@ -355,12 +354,10 @@ void loop()
     {
         pkt.flags |= STATUS_FLAG_OTA_ACTIVE;
     }
-    /*
-        if (gSys.mode != SystemMode::ANCHOR)
-        {
-            pkt.counter = 0;
-        }
-        else if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)
+
+    if (gSys.mode == SystemMode::ANCHOR)
+    {
+        if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)
             pkt.counter = 1;
         else if (strcmp(gSys.sensors.autoState, "A_GPSAVG") == 0)
             pkt.counter = 2;
@@ -384,8 +381,12 @@ void loop()
             pkt.counter = 11;
         else
             pkt.counter = 0;
-
-        */
+    }
+    else
+    {
+        pkt.counter =
+            (uint8_t)min(maxWorkDtMs, (uint32_t)255);
+    }
 
     static uint32_t lastStatusR1Ms = 0;
     static uint32_t lastStatusR2Ms = 0;
@@ -405,6 +406,7 @@ void loop()
         StatusPacket pkt2 = pkt;
         gRemote.sendStatusRemote2(pkt2);
     }
+
     uint32_t workDtMs = millis() - workStartMs;
 
     if (workDtMs > maxWorkDtMs)

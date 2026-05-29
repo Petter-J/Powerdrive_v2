@@ -218,7 +218,7 @@ void display_lcd_begin()
 {
     ledcSetup(0, 10000, 8);        // channel 0, 10kHz, 8-bit
     ledcAttachPin(LCD_BL, 0);
-    ledcWrite(0, 60);            
+    ledcWrite(0, 180);          // Set backlight to ~70%
 
     SPI.begin(LCD_SCLK, -1, LCD_MOSI, LCD_CS);
 

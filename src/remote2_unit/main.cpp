@@ -113,7 +113,7 @@ void setup()
 
     Serial.begin(115200);
     delay(500);
-    
+
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     WiFi.setSleep(false);
@@ -258,7 +258,7 @@ void loop()
     // Uppdatera display max 10 Hz
     static uint32_t lastDisplayMs = 0;
 
-    if (now - lastDisplayMs >= 100)
+    if (now - lastDisplayMs >= 50)
     {
         lastDisplayMs = now;
 

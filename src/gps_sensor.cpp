@@ -1,8 +1,6 @@
 #include "gps_sensor.h"
 
-uint32_t gGpsMaxUpdateMs = 0;
-uint16_t gGpsLastBytesRead = 0;
-uint16_t gGpsMaxBytesRead = 0;
+
 
 static void sendUbx(HardwareSerial &serial, const uint8_t *payload, uint16_t len)
 {
@@ -70,10 +68,8 @@ bool GpsSensor::begin()
 
 void GpsSensor::update(GpsFix &out)
 {
-    const uint32_t gpsStartMs = millis();
-
     uint16_t bytesRead = 0;
-    static constexpr uint16_t MAX_GPS_BYTES_PER_UPDATE = 64;
+    static constexpr uint16_t MAX_GPS_BYTES_PER_UPDATE = 135;
 
     while (_serial.available() &&
            bytesRead < MAX_GPS_BYTES_PER_UPDATE)
@@ -81,20 +77,6 @@ void GpsSensor::update(GpsFix &out)
         char c = _serial.read();
         _gps.encode(c);
         bytesRead++;
-    }
-
-    gGpsLastBytesRead = bytesRead;
-
-    if (bytesRead > gGpsMaxBytesRead)
-    {
-        gGpsMaxBytesRead = bytesRead;
-    }
-
-    const uint32_t gpsDtMs = millis() - gpsStartMs;
-
-    if (gpsDtMs > gGpsMaxUpdateMs)
-    {
-        gGpsMaxUpdateMs = gpsDtMs;
     }
 
     out.locationValid =
@@ -126,7 +108,7 @@ void GpsSensor::update(GpsFix &out)
     }
 
     if (_gps.course.isValid() &&
-        _gps.course.age() < 1500 &&
+        _gps.course.age() < 2000 &&
         out.speedValid &&
         out.speedMps >= AutoConfig::MIN_GPS_COURSE_SPEED_MPS)
     {
@@ -148,4 +130,6 @@ void GpsSensor::update(GpsFix &out)
         out.courseDeg = 0.0f;
         out.courseValid = false;
     }
+
+   
 }

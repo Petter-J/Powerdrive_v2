@@ -308,7 +308,7 @@ void loop()
     // Uppdatera display
     static uint32_t lastDisplayMs = 0;
 
-    if (now - lastDisplayMs >= 100)
+    if (now - lastDisplayMs >= 50)
     {
         lastDisplayMs = now;
 
