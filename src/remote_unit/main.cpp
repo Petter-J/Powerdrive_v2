@@ -208,6 +208,8 @@ void loop()
     static uint32_t lastButtonSendMs = 0;
     static uint32_t lastSentMask = 0;
     static uint32_t lastMainMs = 0;
+    static uint32_t maxWorkDtMs = 0;
+    static uint32_t lastMaxResetMs = 0;
 
     const uint32_t now = millis();
 
@@ -218,7 +220,10 @@ void loop()
 
     lastMainMs = now;
 
+    const uint32_t workStartMs = millis();
+
     const uint32_t buttonMask = readButtons();
+
 
     // Emergency OTA: STOP held 5 sec
 
@@ -306,18 +311,35 @@ void loop()
     const bool linkAlive = gHasStatus && ((now - gLastStatusMs) < 1000);
 
     // Uppdatera display
+    // Uppdatera display
     static uint32_t lastDisplayMs = 0;
 
-    if (now - lastDisplayMs >= 50)
+    if (now - lastDisplayMs >= 100)
     {
         lastDisplayMs = now;
 
+        StatusPacket debugStatus = gStatus;
+        debugStatus.counter =
+            (uint8_t)min(maxWorkDtMs, (uint32_t)255);
+
         display_update(
-            gStatus,
+            debugStatus,
             gHasStatus,
             buttonMask,
             linkAlive,
             gBoatHeading.valid,
             gBoatHeading.headingDeg);
+    }
+    uint32_t workDtMs = millis() - workStartMs;
+
+    if (workDtMs > maxWorkDtMs)
+    {
+        maxWorkDtMs = workDtMs;
+    }
+
+    if (millis() - lastMaxResetMs >= 2000)
+    {
+        lastMaxResetMs = millis();
+        maxWorkDtMs = 0;
     }
 }

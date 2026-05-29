@@ -217,7 +217,7 @@ namespace PwmConfig
 namespace TimingConfig
 {
     // Main ESP
-    static constexpr uint32_t MAIN_LOOP_INTERVAL_MS = 25;
+    static constexpr uint32_t MAIN_LOOP_INTERVAL_MS = 20;
 
     // Remote1 (boat IMU + buttons)
     static constexpr uint32_t REMOTE1_LOOP_INTERVAL_MS = 20;

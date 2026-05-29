@@ -258,7 +258,7 @@ void loop()
     // Uppdatera display max 10 Hz
     static uint32_t lastDisplayMs = 0;
 
-    if (now - lastDisplayMs >= 50)
+    if (now - lastDisplayMs >= 100)
     {
         lastDisplayMs = now;
 

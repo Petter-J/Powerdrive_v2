@@ -237,7 +237,6 @@ void display_lcd_update(
 {
     static bool firstDraw = true;
     static ScreenType lastScreenType = SCREEN_NO_DATA;
-
     static uint8_t lastMode = 255;
     static bool lastHasStatus = false;
     static bool lastLinkAlive = false;

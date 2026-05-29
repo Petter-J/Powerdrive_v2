@@ -149,8 +149,8 @@ static void drawHeader(uint8_t mode)
     const char *txt = modeText(mode);
 
     tft.setTextSize(3);
-    tft.getTextBounds(txt, 0, 8, &x1, &y1, &tw, &th);
-    tft.setCursor((W - tw) / 2, 8);
+    tft.getTextBounds(txt, 0, 16, &x1, &y1, &tw, &th);
+    tft.setCursor((W - tw) / 2, 16);
     tft.print(txt);
 }
 
@@ -182,7 +182,9 @@ static void drawFooter(
 {
     (void)buttonMask;
 
-    tft.fillRect(0, FOOTER1_Y, W, 50, COLOR_BG);
+    tft.fillRect(0, FOOTER1_Y, W, 25, COLOR_BG);
+    tft.fillRect(25, FOOTER2_Y, 110, 25, COLOR_BG);
+    tft.fillRect(140, FOOTER2_Y, 100, 25, COLOR_BG);
 
     tft.setTextSize(2);
 
@@ -195,7 +197,7 @@ static void drawFooter(
 
     drawCenteredText("GPS", W / 2, FOOTER1_Y, 2, gpsOk ? COLOR_GOOD : COLOR_BAD);
 
-    tft.setCursor(W - 75, FOOTER1_Y);
+    tft.setCursor(W - 55, FOOTER1_Y);
     tft.setTextColor(linkAlive ? COLOR_GOOD : COLOR_BAD, COLOR_BG);
     tft.print(linkAlive ? "LINK" : "LOST");
 
@@ -205,9 +207,19 @@ static void drawFooter(
     tft.print("BH");
     tft.print(headingDisplayDeg(status.boatHeadingDeg10));
 
-    tft.setCursor(180, FOOTER2_Y);
+    tft.setCursor(145, FOOTER2_Y);
     tft.print("MH");
     tft.print(headingDisplayDeg(status.motorHeadingDeg10));
+}
+
+static void drawCounter(uint8_t counter)
+{
+    tft.fillRect(0, FOOTER1_Y, 35, 25, COLOR_BG);
+
+    tft.setTextSize(2);
+    tft.setTextColor(COLOR_WARN, COLOR_BG);
+    tft.setCursor(10, FOOTER1_Y);
+    tft.print(counter);
 }
 
 enum ScreenType : uint8_t
@@ -235,56 +247,7 @@ static ScreenType getScreenType(
     return SCREEN_NORMAL;
 }
 
-static bool compassNeedsFullRedraw = true;
 
-static void drawCompass(float headingDeg, bool fullRedraw)
-{
-    static int lastDeg = -999;
-
-    const int cx = 120;
-    const int cy = 160;
-    const int r = 85;
-
-    int deg = (int)(headingDeg + 0.5f);
-    if (deg >= 360)
-        deg -= 360;
-
-    if (fullRedraw)
-    {
-        lastDeg = -999;
-        tft.fillScreen(COLOR_BG);
-
-        tft.drawCircle(cx, cy, r, COLOR_DIM);
-        tft.drawCircle(cx, cy, r - 1, COLOR_DIM);
-
-        drawCenteredText("N", cx, cy - r - 18, 2, COLOR_TEXT);
-        drawCenteredText("S", cx, cy + r + 4, 2, COLOR_TEXT);
-        drawCenteredText("W", cx - r - 18, cy - 8, 2, COLOR_TEXT);
-        drawCenteredText("E", cx + r + 18, cy - 8, 2, COLOR_TEXT);
-    }
-
-    if (deg == lastDeg)
-        return;
-
-    lastDeg = deg;
-
-    // Rensa bara mitten där pil + gradtal finns
-    tft.fillCircle(cx, cy, r - 22, COLOR_BG);
-
-    float a = (headingDeg - 90.0f) * DEG_TO_RAD;
-
-    int x = cx + cosf(a) * (r - 28);
-    int y = cy + sinf(a) * (r - 28);
-
-    tft.drawLine(cx, cy, x, y, COLOR_WARN);
-    tft.drawLine(cx + 1, cy, x + 1, y, COLOR_WARN);
-    tft.drawLine(cx - 1, cy, x - 1, y, COLOR_WARN);
-
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%03d", deg);
-
-    drawCenteredText(buf, cx, cy - 12, 4, COLOR_GOOD);
-}
 
 void display_begin()
 {
@@ -317,6 +280,7 @@ void display_update(
     static bool firstDraw = true;
     static ScreenType lastScreenType = SCREEN_NO_DATA;
     static uint8_t lastMode = 255;
+    static bool lastHasStatus = false;
     static bool lastLinkAlive = false;
     static uint32_t lastButtonMask = 0;
     static uint8_t lastManualThrustPct = 255;
@@ -328,9 +292,8 @@ void display_update(
     static uint16_t lastMotorHeadingDeg10 = 65535;
     static uint8_t lastMotorTiltUnsafe = 255;
     static int8_t lastSteerState = 99;
-    static uint8_t lastSatellites = 255;
-    static uint8_t lastSatellitesInView = 255;
     static uint8_t lastFlags = 255;
+    static uint8_t lastCounter = 255;
     static uint32_t linkLostSinceMs = 0;
 
     if (linkAlive)
@@ -366,8 +329,7 @@ void display_update(
         buttonMask != lastButtonMask ||
         status.flags != lastFlags ||
         headingDisplayDeg(status.boatHeadingDeg10) != headingDisplayDeg(lastBoatHeadingDeg10) ||
-        headingDisplayDeg(status.motorHeadingDeg10) != headingDisplayDeg(lastMotorHeadingDeg10) ||
-        status.counter != 255; // enkel: footer får uppdateras ofta
+        headingDisplayDeg(status.motorHeadingDeg10) != headingDisplayDeg(lastMotorHeadingDeg10);
 
     if (firstDraw)
     {
@@ -382,16 +344,11 @@ void display_update(
 
     if (screenType == SCREEN_NO_DATA)
     {
-        if (localBoatHeadingValid)
+        if (screenChanged)
         {
-            drawCompass(localBoatHeadingDeg, screenChanged || compassNeedsFullRedraw);
-            compassNeedsFullRedraw = false;
-        }
-        else
-        {
-            compassNeedsFullRedraw = true;
             tft.fillScreen(COLOR_BG);
-            drawCenteredText("NO COMPASS", W / 2, 140, 3, COLOR_BAD);
+            drawCenteredText("NO DATA", W / 2, 120, 4, COLOR_BAD);
+            drawCenteredText("WAITING MAIN", W / 2, 170, 2, COLOR_TEXT);
         }
 
         lastScreenType = screenType;
@@ -404,7 +361,7 @@ void display_update(
         if (screenType == SCREEN_OTA)
         {
             tft.fillRect(0, HEADER_Y, W, HEADER_H, COLOR_OTA);
-            drawCenteredText("OTA", W / 2, 8, 3, ILI9341_BLACK);
+            drawCenteredText("OTA", W / 2, 16, 3, ILI9341_BLACK);
         }
         
         else
@@ -570,8 +527,14 @@ void display_update(
     if (footerChanged)
         drawFooter(status, linkAlive, buttonMask);
 
+    if (status.counter != lastCounter)
+    {
+        drawCounter(status.counter);
+    }
+
 save_state:
     lastScreenType = screenType;
+    lastHasStatus = hasStatus;
     lastLinkAlive = linkAlive;
     lastButtonMask = buttonMask;
     lastMode = status.mode;
@@ -585,5 +548,5 @@ save_state:
     lastMotorTiltUnsafe = status.motorTiltUnsafe;
     lastSteerState = status.steerState;
     lastFlags = status.flags;
-   
+    lastCounter = status.counter;
 }

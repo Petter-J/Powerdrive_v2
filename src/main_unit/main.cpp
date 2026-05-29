@@ -391,7 +391,7 @@ void loop()
     static uint32_t lastStatusR1Ms = 0;
     static uint32_t lastStatusR2Ms = 0;
 
-    if (now - lastStatusR1Ms >= 50)
+    if (now - lastStatusR1Ms >= 70)
     {
         lastStatusR1Ms = now;
 
@@ -399,7 +399,7 @@ void loop()
         gRemote.sendStatusRemote1(pkt1);
     }
 
-    if (now - lastStatusR2Ms >= 50)
+    if (now - lastStatusR2Ms >= 70)
     {
         lastStatusR2Ms = now;
 
