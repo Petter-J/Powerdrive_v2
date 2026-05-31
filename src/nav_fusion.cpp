@@ -4,34 +4,53 @@
 
 // ============================================================
 // WORLD HEADING GPS CALIBRATION
+// ------------------------------------------------------------
+// GPS COG får bara användas som world-referens när båten har
+// gått tillräckligt fort och haft stabil kurs en stund.
+//
+// Detta använder en stabilitetspoäng istället för hård reset:
+// - bra GPS COG ger +100 ms
+// - dålig GPS COG ger -200 ms
+// - målet är 5000 ms
+//
+// Enstaka GPS-jitter förstör alltså inte hela kalibreringen,
+// men många dåliga COG-värden gör att world inte blir godkänd.
 // ============================================================
 static bool gpsHeadingCalibrationOk(const GpsFix &gps)
 {
-    static bool stableActive = false;
+    static bool active = false;
     static float referenceCourseDeg = 0.0f;
-    static uint32_t stableStartMs = 0;
+    static int32_t stableMs = 0;
+    
 
     static constexpr float MIN_CAL_SPEED_MPS = 2.0f;
     static constexpr float MAX_COURSE_DEVIATION_DEG = 3.0f;
-    static constexpr uint32_t REQUIRED_STABLE_MS = 5000;
+    static constexpr int32_t REQUIRED_STABLE_MS = 5000;
+    static constexpr int32_t GOOD_STEP_MS = 100;
+    static constexpr int32_t BAD_PENALTY_MS = 200;
 
     if (!gps.speedValid ||
         !gps.courseValid ||
         gps.speedMps < MIN_CAL_SPEED_MPS)
     {
-        stableActive = false;
-        stableStartMs = 0;
+        active = false;
+        stableMs = 0;
         return false;
     }
 
-    const uint32_t nowMs = millis();
-
-    if (!stableActive)
+    if (!active)
     {
-        stableActive = true;
+        active = true;
         referenceCourseDeg = gps.courseDeg;
-        stableStartMs = nowMs;
+        stableMs = 0;
         return false;
+    }
+
+    // Räkna bara när GPS faktiskt har levererat en ny position.
+    // Annars skulle samma COG kunna räknas flera loopvarv.
+    if (!gps.locationUpdated)
+    {
+        return stableMs >= REQUIRED_STABLE_MS;
     }
 
     const float courseDeviationDeg =
@@ -39,14 +58,26 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
             gps.courseDeg,
             referenceCourseDeg));
 
-    if (courseDeviationDeg > MAX_COURSE_DEVIATION_DEG)
+    if (courseDeviationDeg <= MAX_COURSE_DEVIATION_DEG)
     {
+        stableMs += GOOD_STEP_MS;
+
+        if (stableMs > REQUIRED_STABLE_MS)
+            stableMs = REQUIRED_STABLE_MS;
+    }
+    else
+    {
+        stableMs -= BAD_PENALTY_MS;
+
+        if (stableMs < 0)
+            stableMs = 0;
+
+        // Starta om referenskursen från den nya GPS-kursen.
+        // Stabilitetspoängen nollas inte, men får straff.
         referenceCourseDeg = gps.courseDeg;
-        stableStartMs = nowMs;
-        return false;
     }
 
-    return (nowMs - stableStartMs) >= REQUIRED_STABLE_MS;
+    return stableMs >= REQUIRED_STABLE_MS;
 }
 
 void NavFusion::update(
