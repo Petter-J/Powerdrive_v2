@@ -2,11 +2,51 @@
 #include <cstring>
 #include "config.h"
 
+// ============================================================
+// WORLD HEADING GPS CALIBRATION
+// ============================================================
 static bool gpsHeadingCalibrationOk(const GpsFix &gps)
 {
-    return gps.speedValid &&
-           gps.courseValid &&
-           gps.speedMps >= 1.0f;
+    static bool stableActive = false;
+    static float referenceCourseDeg = 0.0f;
+    static uint32_t stableStartMs = 0;
+
+    static constexpr float MIN_CAL_SPEED_MPS = 2.0f;
+    static constexpr float MAX_COURSE_DEVIATION_DEG = 3.0f;
+    static constexpr uint32_t REQUIRED_STABLE_MS = 5000;
+
+    if (!gps.speedValid ||
+        !gps.courseValid ||
+        gps.speedMps < MIN_CAL_SPEED_MPS)
+    {
+        stableActive = false;
+        stableStartMs = 0;
+        return false;
+    }
+
+    const uint32_t nowMs = millis();
+
+    if (!stableActive)
+    {
+        stableActive = true;
+        referenceCourseDeg = gps.courseDeg;
+        stableStartMs = nowMs;
+        return false;
+    }
+
+    const float courseDeviationDeg =
+        fabsf(shortestAngleErrorDeg(
+            gps.courseDeg,
+            referenceCourseDeg));
+
+    if (courseDeviationDeg > MAX_COURSE_DEVIATION_DEG)
+    {
+        referenceCourseDeg = gps.courseDeg;
+        stableStartMs = nowMs;
+        return false;
+    }
+
+    return (nowMs - stableStartMs) >= REQUIRED_STABLE_MS;
 }
 
 void NavFusion::update(
@@ -61,7 +101,6 @@ void NavFusion::update(
     pct = clampf(pct, 0.0f, 100.0f);
 
     s.speedPct = pct;
-
 
     const uint32_t nowMs = millis();
 

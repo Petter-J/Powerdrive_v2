@@ -51,7 +51,7 @@ namespace AnchorConfig
     // Base thrust
     // --------------------------------------------------------
     static constexpr float START_THRUST_PCT = 10.0f;
-    static constexpr float MIN_THRUST_PCT = 2.0f;
+    static constexpr float MIN_THRUST_PCT = 10.0f;
     static constexpr float MAX_THRUST_PCT = 50.0f;
 
     // Distans där full thrust används
@@ -80,7 +80,6 @@ namespace AnchorConfig
 
     // Hur mycket thrust justeras per steg
     static constexpr float THRUST_ADJUST_STEP_PCT = 1.0f;
-
 
     // --------------------------------------------------------
     // Drift line maintenance
@@ -187,7 +186,6 @@ namespace AutoConfig
     static constexpr float MIN_GPS_COURSE_SPEED_MPS = 0.3f;
     static constexpr float START_THRUST_PCT = 20.0f;
     static constexpr float MAX_SPEED_MPS = 2.5f;
-    static constexpr bool BENCH_TEST_AUTO_WITHOUT_GPS = false;
     static constexpr float COG_FILTER_ALPHA = 0.2f;
     static constexpr float COG_MAX_JUMP_DEG = 25.0f;
     static constexpr float MAX_STEER_OFFSET_DEG = 15.0f;
@@ -254,7 +252,6 @@ namespace ControlDefaults
     static constexpr float SPEED_KD = 0.0f;
 }
 
-
 // ============================================================
 // SAFETY
 // ============================================================
@@ -279,8 +276,6 @@ namespace MotorTiltSafetyConfig
 // ============================================================
 #define ENABLE_SERIAL_DEBUG 1
 
-
-#define DBG_PRINT(x) 
-#define DBG_PRINTLN(x) 
+#define DBG_PRINT(x)
+#define DBG_PRINTLN(x)
 #define DBG_PRINTF(...)
-

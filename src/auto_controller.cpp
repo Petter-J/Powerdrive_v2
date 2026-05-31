@@ -70,9 +70,6 @@ float AutoController::filterCogDeg(float rawCogDeg)
 
 float AutoController::getAutoCourseHeadingDeg(const SystemState &sys)
 {
-    if (AutoConfig::BENCH_TEST_AUTO_WITHOUT_GPS)
-        return sys.sensors.motorHeadingDeg;
-
     if (sys.sensors.locationUpdated)
     {
         return filterCogDeg(sys.sensors.courseOverGroundDeg);
@@ -171,15 +168,13 @@ ActuatorCommand AutoController::update(
 
     const float currentSpeedMps = sys.sensors.speedMps;
 
-    if (!AutoConfig::BENCH_TEST_AUTO_WITHOUT_GPS &&
-        !autoCanUseGpsCourse(sys))
+    if (!autoCanUseGpsCourse(sys))
     {
         strcpy(sys.sensors.autoState, "LOW SPD");
         return makeManualFallbackCommand(sys);
     }
 
-    if (!AutoConfig::BENCH_TEST_AUTO_WITHOUT_GPS &&
-        !sys.sensors.boatImuValid)
+    if (!sys.sensors.boatImuValid)
     {
         strcpy(sys.sensors.autoState, "NO BH");
         return makeManualFallbackCommand(sys);

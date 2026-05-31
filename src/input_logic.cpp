@@ -127,7 +127,7 @@ void InputLogic::applySafety(
     {
         if (sys.mode != SystemMode::STOP)
         {
-            
+
             setMode(SystemMode::STOP, nowMs, sys, controller);
         }
         return;
@@ -136,14 +136,22 @@ void InputLogic::applySafety(
     if (!SafetyConfig::ENABLE_SENSOR_MODE_SAFETY)
         return;
 
+    // AUTO och ANCHOR kräver att GPS-kurs har kalibrerat
+    // BH/MH till world-referens innan mode får aktiveras.
+    const bool worldHeadingOk =
+        sys.sensors.boatHeadingWorldValid &&
+        sys.sensors.motorHeadingWorldValid;
+
     const bool autoSensorsOk =
         sys.sensors.gpsValid &&
         sys.sensors.speedValid &&
-        sys.sensors.boatImuValid;
+        sys.sensors.boatImuValid &&
+        worldHeadingOk;
 
     const bool anchorSensorsOk =
         sys.sensors.gpsValid &&
-        sys.sensors.motorImuValid;
+        sys.sensors.motorImuValid &&
+        worldHeadingOk;
 
     // =========================
     // AUTO
@@ -163,7 +171,7 @@ void InputLogic::applySafety(
 
         if (nowMs - _lastValidAutoSensorMs > SafetyConfig::SENSOR_FAIL_TIMEOUT_MS)
         {
-           
+
             setMode(SystemMode::STOP, nowMs, sys, controller);
         }
     }
@@ -186,7 +194,7 @@ void InputLogic::applySafety(
 
         if (nowMs - _lastValidAnchorSensorMs > SafetyConfig::SENSOR_FAIL_TIMEOUT_MS)
         {
-            
+
             setMode(SystemMode::STOP, nowMs, sys, controller);
         }
     }
@@ -228,8 +236,6 @@ void InputLogic::setMode(
     sys.mode = newMode;
     controller.onModeChanged(newMode, sys);
     sys.lastCommandTimeMs = nowMs;
-
-    
 }
 
 void InputLogic::handleStop(
@@ -261,6 +267,13 @@ void InputLogic::handleModeButtons(
     if (modePressCount != 1)
         return;
 
+    // ======================================
+    // WORLD HEADING READY
+    // ======================================
+    const bool worldHeadingOk =
+        sys.sensors.boatHeadingWorldValid &&
+        sys.sensors.motorHeadingWorldValid;
+
     if (btn.requestManual)
     {
         if (sys.mode == SystemMode::MANUAL)
@@ -279,36 +292,26 @@ void InputLogic::handleModeButtons(
             return;
         }
 
-      //----------------TILLFÄLLIG FÖR TESTNING------------------
-        if (AutoConfig::BENCH_TEST_AUTO_WITHOUT_GPS)
+        if (!worldHeadingOk)
         {
-            sys.targetHeadingDeg = sys.sensors.motorHeadingDeg;
-            sys.targetSpeedMps = sys.sensors.gpsSpeedMps;
-
-            sys.targetSpeedPct = clampf(
-                (sys.targetSpeedMps / AutoConfig::MAX_SPEED_MPS) * 100.0f,
-                Limits::THRUST_MIN_PCT,
-                Limits::THRUST_MAX_PCT);
+            return;
         }
-      //----------------------------------------------------------
-        else
+
+        if (!sys.sensors.gpsValid ||
+            !sys.sensors.speedValid ||
+            !sys.sensors.courseValid ||
+            sys.sensors.gpsSpeedMps < AutoConfig::MIN_GPS_COURSE_SPEED_MPS)
         {
-            if (!sys.sensors.gpsValid ||
-                !sys.sensors.speedValid ||
-                !sys.sensors.courseValid ||
-                sys.sensors.gpsSpeedMps < AutoConfig::MIN_GPS_COURSE_SPEED_MPS)
-            {
-                return;
-            }
-
-            sys.targetHeadingDeg = sys.sensors.courseOverGroundDeg;
-            sys.targetSpeedMps = sys.sensors.gpsSpeedMps;
-
-            sys.targetSpeedPct = clampf(
-                (sys.targetSpeedMps / AutoConfig::MAX_SPEED_MPS) * 100.0f,
-                Limits::THRUST_MIN_PCT,
-                Limits::THRUST_MAX_PCT);
+            return;
         }
+
+        sys.targetHeadingDeg = sys.sensors.courseOverGroundDeg;
+        sys.targetSpeedMps = sys.sensors.gpsSpeedMps;
+
+        sys.targetSpeedPct = clampf(
+            (sys.targetSpeedMps / AutoConfig::MAX_SPEED_MPS) * 100.0f,
+            Limits::THRUST_MIN_PCT,
+            Limits::THRUST_MAX_PCT);
 
         setMode(SystemMode::AUTO, nowMs, sys, controller);
         return;
@@ -322,20 +325,25 @@ void InputLogic::handleModeButtons(
         }
         else
         {
+            if (!worldHeadingOk)
+            {
+                return;
+            }
+
             if (sys.actuators.thrustPct <= AnchorControlConfig::MAX_ENTRY_THRUST_PCT)
             {
                 if (_anchorCount > 0)
                 {
                     sys.anchorLatDeg = _anchorSumLat / _anchorCount;
                     sys.anchorLonDeg = _anchorSumLon / _anchorCount;
-                    sys.anchorActive = true;     
+                    sys.anchorActive = true;
                 }
 
                 setMode(SystemMode::ANCHOR, nowMs, sys, controller);
             }
             else
             {
-                
+
                 setMode(SystemMode::STOP, nowMs, sys, controller);
             }
         }
@@ -375,8 +383,6 @@ void InputLogic::handleManualButtons(
                 _cfg.manualThrustMinPct,
                 _cfg.manualThrustMaxPct);
         }
-
-        
     }
     else if (thrustDown && !thrustUp)
     {
@@ -386,7 +392,7 @@ void InputLogic::handleManualButtons(
                 sys.manualThrustPct - _cfg.manualThrustStepPct,
                 _cfg.manualThrustMinPct,
                 _cfg.manualThrustMaxPct);
-         }
+        }
     }
 
     if (steerLeft && !steerRight)
@@ -453,21 +459,19 @@ void InputLogic::handleAutoButtons(
         sys.targetSpeedPct = clampf(
             (sys.targetSpeedMps / AutoConfig::MAX_SPEED_MPS) * 100.0f,
             Limits::THRUST_MIN_PCT,
-            Limits::THRUST_MAX_PCT);    
+            Limits::THRUST_MAX_PCT);
     }
 
     // HEADING
     if (btn.steerLeftHeld && !btn.steerRightHeld)
     {
         sys.targetHeadingDeg = wrap360(
-            sys.targetHeadingDeg - AutoControlConfig::HEADING_STEP_DEG);   
+            sys.targetHeadingDeg - AutoControlConfig::HEADING_STEP_DEG);
     }
 
     else if (btn.steerRightHeld && !btn.steerLeftHeld)
     {
         sys.targetHeadingDeg = wrap360(
             sys.targetHeadingDeg + AutoControlConfig::HEADING_STEP_DEG);
-
-        
     }
 }
