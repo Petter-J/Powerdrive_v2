@@ -144,7 +144,7 @@ namespace CompassConfig
     static constexpr int TX_PIN = 4; // eller riktig TX-pin om du använder den
     static constexpr uint32_t BAUD = 115200;
 
-    static constexpr float M_HEADING_OFFSET_DEG = 0.0f;
+    static constexpr float M_HEADING_OFFSET_DEG = 20.0f;
     static constexpr uint32_t MOTOR_HEADING_HOLD_MS = 400;
 
 }

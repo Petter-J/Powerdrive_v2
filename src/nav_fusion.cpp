@@ -23,9 +23,9 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
     static int32_t stableMs = 0;
     
 
-    static constexpr float MIN_CAL_SPEED_MPS = 2.0f;
-    static constexpr float MAX_COURSE_DEVIATION_DEG = 3.0f;
-    static constexpr int32_t REQUIRED_STABLE_MS = 5000;
+    static constexpr float MIN_CAL_SPEED_MPS = 1.0f;  // 4-5ms i live
+    static constexpr float MAX_COURSE_DEVIATION_DEG = 10.0f;  // 3gr i live
+    static constexpr int32_t REQUIRED_STABLE_MS = 2000;   // 5000ms i live
     static constexpr int32_t GOOD_STEP_MS = 100;
     static constexpr int32_t BAD_PENALTY_MS = 200;
 
@@ -67,14 +67,30 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
     }
     else
     {
-        stableMs -= BAD_PENALTY_MS;
+        static constexpr float RESET_COURSE_DEVIATION_DEG = 30.0f; // 15 grader i live
 
-        if (stableMs < 0)
+        if (courseDeviationDeg >= RESET_COURSE_DEVIATION_DEG)
+        {
+            // Riktig sväng.
+            // Börja om direkt på den nya kursen.
             stableMs = 0;
+            referenceCourseDeg = gps.courseDeg;
+        }
+        else
+        {
+            // Mindre avvikelse/jitter.
+            // Ge straff men behåll referenskursen så länge vi har stabilitet kvar.
+            stableMs -= BAD_PENALTY_MS;
 
-        // Starta om referenskursen från den nya GPS-kursen.
-        // Stabilitetspoängen nollas inte, men får straff.
-        referenceCourseDeg = gps.courseDeg;
+            if (stableMs <= 0)
+            {
+                stableMs = 0;
+
+                // Om stabiliteten är helt förbrukad startar vi om
+                // från den aktuella GPS-kursen.
+                referenceCourseDeg = gps.courseDeg;
+            }
+        }
     }
 
     return stableMs >= REQUIRED_STABLE_MS;

@@ -188,6 +188,8 @@ static void drawFooter(const StatusPacket &status, bool linkAlive, uint32_t butt
 
     const bool gpsOk = linkAlive && ((status.flags & STATUS_FLAG_GPS_VALID) != 0);
 
+    const bool worldOk = (status.flags & STATUS_FLAG_WORLD_OK) != 0;
+
     drawCenteredText("GPS", 120, 230, 2, gpsOk ? COLOR_GOOD : COLOR_BAD);
 
     tft.setCursor(180, 230);
@@ -200,7 +202,8 @@ static void drawFooter(const StatusPacket &status, bool linkAlive, uint32_t butt
 
     tft.fillRect(25, 255, 110, 25, COLOR_BG);
 
-    tft.setTextColor(COLOR_WARN);
+    tft.setTextColor(worldOk ? COLOR_GOOD : COLOR_WARN);
+
     tft.setCursor(45, 262);
     tft.print("BH");
     tft.print(headingDisplayDeg(status.boatHeadingDeg10));

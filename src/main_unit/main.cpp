@@ -355,6 +355,12 @@ void loop()
         pkt.flags |= STATUS_FLAG_OTA_ACTIVE;
     }
 
+    if (gSys.sensors.boatHeadingWorldValid &&
+        gSys.sensors.motorHeadingWorldValid)
+    {
+        pkt.flags |= STATUS_FLAG_WORLD_OK;
+    }
+
     if (gSys.mode == SystemMode::ANCHOR)
     {
         if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)

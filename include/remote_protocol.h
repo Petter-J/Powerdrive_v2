@@ -30,4 +30,4 @@ struct StatusPacket
 static constexpr uint8_t STATUS_FLAG_GPS_VALID = 1 << 0;
 static constexpr uint8_t STATUS_FLAG_OTA_ACTIVE = 1 << 1;
 static constexpr uint8_t REMOTE_FLAG_BOAT_IMU_VALID = 1 << 0;
-
+static constexpr uint8_t STATUS_FLAG_WORLD_OK = 1 << 2;

@@ -195,13 +195,18 @@ static void drawFooter(
     const bool gpsOk =
         linkAlive && ((status.flags & STATUS_FLAG_GPS_VALID) != 0);
 
+    const bool worldOk =
+        (status.flags & STATUS_FLAG_WORLD_OK) != 0;
+
     drawCenteredText("GPS", W / 2, FOOTER1_Y, 2, gpsOk ? COLOR_GOOD : COLOR_BAD);
 
     tft.setCursor(W - 55, FOOTER1_Y);
     tft.setTextColor(linkAlive ? COLOR_GOOD : COLOR_BAD, COLOR_BG);
     tft.print(linkAlive ? "LINK" : "LOST");
 
-    tft.setTextColor(COLOR_WARN, COLOR_BG);
+    tft.setTextColor(
+        worldOk ? COLOR_GOOD : COLOR_WARN,
+        COLOR_BG);
 
     tft.setCursor(35, FOOTER2_Y);
     tft.print("BH");
