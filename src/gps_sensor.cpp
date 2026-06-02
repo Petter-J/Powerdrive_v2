@@ -1,7 +1,5 @@
 #include "gps_sensor.h"
 
-
-
 static void sendUbx(HardwareSerial &serial, const uint8_t *payload, uint16_t len)
 {
     uint8_t ckA = 0;
@@ -79,6 +77,8 @@ void GpsSensor::update(GpsFix &out)
         bytesRead++;
     }
 
+    out.courseUpdated = false;
+
     out.locationValid =
         _gps.location.isValid() &&
         _gps.location.age() < 2000;
@@ -112,24 +112,29 @@ void GpsSensor::update(GpsFix &out)
         out.speedValid &&
         out.speedMps >= AutoConfig::MIN_GPS_COURSE_SPEED_MPS)
     {
-        const float course = _gps.course.deg();
+        const bool courseUpdated =
+            _gps.course.isUpdated();
+
+        const float course =
+            _gps.course.deg();
 
         if (course >= 0.0f && course <= 360.0f)
         {
             out.courseDeg = course;
             out.courseValid = true;
+            out.courseUpdated = courseUpdated;
         }
         else
         {
             out.courseDeg = 0.0f;
             out.courseValid = false;
+            out.courseUpdated = false;
         }
     }
     else
     {
         out.courseDeg = 0.0f;
         out.courseValid = false;
+        out.courseUpdated = false;
     }
-
-   
 }

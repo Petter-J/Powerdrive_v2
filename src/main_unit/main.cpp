@@ -12,7 +12,6 @@
 
 #include <cstring>
 
-
 // ============================================================
 // Globals
 // ============================================================
@@ -25,7 +24,6 @@ static RemoteEspNow gRemote;
 static ButtonManager gButtons;
 static InputLogic gInputLogic;
 static Navigation gNavigation;
-
 
 // ============================================================
 // Local button read
@@ -60,7 +58,6 @@ static uint32_t readLocalButtons()
 
     return mask;
 }
-
 
 // ============================================================
 // Setup
@@ -120,7 +117,6 @@ void setup()
     if (ButtonPins::STEER_RIGHT >= 0)
         pinMode(ButtonPins::STEER_RIGHT, INPUT_PULLUP);
 
-
     // init safe state först
     gSys.mode = SystemMode::STOP;
     gSys.motorsEnabled = true;
@@ -138,9 +134,6 @@ void setup()
     gButtons.begin();
     gInputLogic.begin();
     gNavigation.begin();
-    
-
-    
 }
 
 // ============================================================
@@ -153,7 +146,6 @@ void loop()
     const uint32_t now = millis();
 
     static uint32_t maxWorkDtMs = 0;
-    
 
     // Main loop pacing
     if (now - lastMainMs < TimingConfig::MAIN_LOOP_INTERVAL_MS)
@@ -163,16 +155,12 @@ void loop()
     lastMainMs = now;
 
     const uint32_t workStartMs = millis();
-    
 
     // 1. Read local buttons
     const uint32_t localMask = readLocalButtons();
 
-
     const bool stopPressed =
         (localMask & buttonBit(ButtonId::STOP)) != 0;
-
-    
 
     // Emergency OTA: local STOP held 5 sec
     static uint32_t earlyOtaStopHoldStartMs = 0;
@@ -273,10 +261,8 @@ void loop()
     // 7. Apply input policy AFTER navigation
     gInputLogic.applyButtons(btn, now, gSys, gController);
 
-  
     // 9. Safety AFTER fresh sensors
     gInputLogic.applySafety(now, gSys, gController);
-    
 
     // 10. Control update
     if (now - lastControlMs >= TimingConfig::CONTROL_INTERVAL_MS)
@@ -293,14 +279,12 @@ void loop()
     pkt.mode = (uint8_t)gSys.mode;
 
     pkt.motorTiltUnsafe = gSys.sensors.motorTiltUnsafe ? 1 : 0;
-
     pkt.manualThrustPct = (uint8_t)roundf(gSys.manualThrustPct);
     pkt.targetSpeedPct = (uint8_t)roundf(gSys.targetSpeedPct);
+    pkt.targetHeadingDeg10 = (uint16_t)roundf(gSys.targetHeadingDeg * 10.0f);
     pkt.gpsSpeedCmps = (uint16_t)roundf(gSys.sensors.gpsSpeedMps * 100.0f);
     pkt.targetSpeedCmps = (uint16_t)roundf(gSys.targetSpeedMps * 100.0f);
     pkt.gpsCogDeg10 = (uint16_t)roundf(gSys.sensors.courseOverGroundDeg * 10.0f);
-
-    
 
     if (gSys.sensors.boatHeadingWorldValid)
     {
@@ -327,8 +311,6 @@ void loop()
     {
         pkt.motorHeadingDeg10 = 0;
     }
-
-    
 
     if (gSys.actuators.steerPct < -1.0f)
     {
@@ -361,7 +343,12 @@ void loop()
         pkt.flags |= STATUS_FLAG_WORLD_OK;
     }
 
-    if (gSys.mode == SystemMode::ANCHOR)
+    if (gSys.mode == SystemMode::AUTO)
+    {
+        pkt.counter =
+            (uint8_t)min((uint32_t)(gSys.targetHeadingDeg / 10.0f), (uint32_t)255);
+    }
+    else if (gSys.mode == SystemMode::ANCHOR)
     {
         if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)
             pkt.counter = 1;

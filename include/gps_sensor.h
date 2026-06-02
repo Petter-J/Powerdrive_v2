@@ -14,6 +14,7 @@ struct GpsFix
     bool locationUpdated = false;
     float speedMps = 0.0f;
     float courseDeg = 0.0f;
+    bool courseUpdated = false;
     uint8_t satellites = 0;
     uint8_t satellitesInView = 0;
 };
@@ -22,10 +23,9 @@ class GpsSensor
 {
 public:
     bool begin();
-    void update(GpsFix& out);
+    void update(GpsFix &out);
 
 private:
     HardwareSerial _serial{1};
     TinyGPSPlus _gps;
-    
 };

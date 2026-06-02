@@ -21,11 +21,10 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
     static bool active = false;
     static float referenceCourseDeg = 0.0f;
     static int32_t stableMs = 0;
-    
 
-    static constexpr float MIN_CAL_SPEED_MPS = 1.0f;  // 4-5ms i live
-    static constexpr float MAX_COURSE_DEVIATION_DEG = 10.0f;  // 3gr i live
-    static constexpr int32_t REQUIRED_STABLE_MS = 2000;   // 5000ms i live
+    static constexpr float MIN_CAL_SPEED_MPS = 1.0f;         // 4-5ms i live
+    static constexpr float MAX_COURSE_DEVIATION_DEG = 10.0f; // 3gr i live
+    static constexpr int32_t REQUIRED_STABLE_MS = 2000;      // 5000ms i live
     static constexpr int32_t GOOD_STEP_MS = 100;
     static constexpr int32_t BAD_PENALTY_MS = 200;
 
@@ -48,7 +47,7 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
 
     // Räkna bara när GPS faktiskt har levererat en ny position.
     // Annars skulle samma COG kunna räknas flera loopvarv.
-    if (!gps.locationUpdated)
+    if (!gps.courseUpdated)
     {
         return stableMs >= REQUIRED_STABLE_MS;
     }
@@ -213,21 +212,30 @@ void NavFusion::update(
         s.motorImuValid &&
         s.boatImuValid)
     {
-        s.motorHeadingWorldOffsetDeg =
-            shortestAngleErrorDeg(
-                gps.courseDeg,
-                s.motorHeadingRawDeg);
+        // ============================================
+        // WORLD CALIBRATION
+        // GPS kalibrerar BH mot verklig kurs.
+        // MH använder samma world-offset som BH så att
+        // den fasta M_HEADING_OFFSET_DEG bevaras.
+        // ============================================
 
         s.boatHeadingWorldOffsetDeg =
             shortestAngleErrorDeg(
                 gps.courseDeg,
                 s.boatHeadingRawDeg);
 
-        s.motorHeadingWorldDeg =
-            wrap360(s.motorHeadingRawDeg + s.motorHeadingWorldOffsetDeg);
+        s.motorHeadingWorldOffsetDeg =
+            s.boatHeadingWorldOffsetDeg;
 
         s.boatHeadingWorldDeg =
-            wrap360(s.boatHeadingRawDeg + s.boatHeadingWorldOffsetDeg);
+            wrap360(
+                s.boatHeadingRawDeg +
+                s.boatHeadingWorldOffsetDeg);
+
+        s.motorHeadingWorldDeg =
+            wrap360(
+                s.motorHeadingRawDeg +
+                s.motorHeadingWorldOffsetDeg);
 
         s.motorHeadingWorldValid = true;
         s.boatHeadingWorldValid = true;
