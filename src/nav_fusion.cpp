@@ -22,9 +22,9 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
     static float referenceCourseDeg = 0.0f;
     static int32_t stableMs = 0;
 
-    static constexpr float MIN_CAL_SPEED_MPS = 1.0f;         // 4-5ms i live
-    static constexpr float MAX_COURSE_DEVIATION_DEG = 10.0f; // 3gr i live
-    static constexpr int32_t REQUIRED_STABLE_MS = 2000;      // 5000ms i live
+    static constexpr float MIN_CAL_SPEED_MPS = 1.0f;        // 4-5ms i live
+    static constexpr float MAX_COURSE_DEVIATION_DEG = 5.0f; // 3gr i live
+    static constexpr int32_t REQUIRED_STABLE_MS = 3000;     // 5000ms i live
     static constexpr int32_t GOOD_STEP_MS = 100;
     static constexpr int32_t BAD_PENALTY_MS = 200;
 

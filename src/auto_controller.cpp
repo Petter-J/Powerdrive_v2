@@ -131,8 +131,7 @@ float AutoController::computeSteerPctFromOffset(
     if (!updateSteerActive(steerErrorDeg))
         return 0.0f;
 
-    const float steerCmd =
-        headingPid.update(steerErrorDeg, dtSec);
+    const float steerCmd = -headingPid.update(steerErrorDeg, dtSec);
 
     return clampf(
         steerCmd,

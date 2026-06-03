@@ -16,8 +16,6 @@ float AnchorController::radToDeg(float rad)
     return rad * 57.295779513082320876f;
 }
 
-
-
 void AnchorController::resetGpsAverage()
 {
     mGpsIndex = 0;
@@ -186,7 +184,7 @@ void AnchorController::onEnter(SystemState &sys)
     mStartZoneHits = 0;
     mDriftZoneHits = 0;
     mStopZoneHits = 0;
-    mLastLocationSeq = 0;
+    mLastLocationSeq = sys.sensors.locationSeq;
 
     mAnchorMode = AnchorMode::Learning;
     mAnchorLearnedThrustPct = clampAnchorThrust(AnchorConfig::START_THRUST_PCT);
@@ -587,7 +585,7 @@ ActuatorCommand AnchorController::update(float dtSec, SystemState &sys, PidContr
         headingError = 0.0f;
     }
 
-    float steerCmd = -headingPid.update(headingError, dtSec);
+    float steerCmd = headingPid.update(headingError, dtSec);
 
     out.steerPct = clampf(
         steerCmd,

@@ -91,9 +91,13 @@ void GpsSensor::update(GpsFix &out)
 
     if (out.locationValid)
     {
+        const bool locationUpdated =
+            _gps.location.isUpdated();
+
         out.latDeg = _gps.location.lat();
         out.lonDeg = _gps.location.lng();
-        out.locationUpdated = _gps.location.isUpdated();
+
+        out.locationUpdated = locationUpdated;
 
         if (out.locationUpdated)
         {
@@ -106,7 +110,6 @@ void GpsSensor::update(GpsFix &out)
     }
 
     out.locationSeq = gpsLocationSeq;
-   
 
     if (out.speedValid)
     {

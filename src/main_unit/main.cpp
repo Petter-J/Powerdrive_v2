@@ -350,6 +350,8 @@ void loop()
     }
     else if (gSys.mode == SystemMode::ANCHOR)
     {
+        // pkt.counter = (uint8_t)((gSys.sensors.locationSeq / 10) % 255);
+
         if (strcmp(gSys.sensors.autoState, "A_WAIT") == 0)
             pkt.counter = 1;
         else if (strcmp(gSys.sensors.autoState, "A_GPSAVG") == 0)

@@ -189,8 +189,8 @@ namespace AutoConfig
     static constexpr float COG_FILTER_ALPHA = 0.2f;
     static constexpr float COG_MAX_JUMP_DEG = 25.0f;
     static constexpr float MAX_STEER_OFFSET_DEG = 15.0f;
-    static constexpr float STEER_ERROR_START_DEG = 0.8f;
-    static constexpr float STEER_ERROR_STOP_DEG = 0.4f;
+    static constexpr float STEER_ERROR_START_DEG = 3.0f;
+    static constexpr float STEER_ERROR_STOP_DEG = 1.5f;
     static constexpr float AUTO_STEER_EXTRA_DEG = 2.0f;
 }
 
