@@ -15,10 +15,11 @@ public:
     ActuatorCommand update(float dtSec, SystemState &sys, PidController &headingPid);
 
 private:
-    static constexpr uint8_t GPS_AVG_COUNT = 6;
+    static constexpr uint8_t GPS_AVG_COUNT = 10;
     static constexpr uint8_t START_CONFIRM_COUNT = 5;
     static constexpr uint8_t STOP_CONFIRM_COUNT = 5;
     static constexpr uint8_t DRIFT_VECTOR_MAX_SAMPLES = 16;
+
 
     enum class AnchorMode : uint8_t
     {
@@ -68,6 +69,7 @@ private:
     uint8_t mStartZoneHits = 0;
     uint8_t mDriftZoneHits = 0;
     uint8_t mStopZoneHits = 0;
+    uint32_t mLastLocationSeq = 0;
 
     AnchorMode mAnchorMode = AnchorMode::Learning;
 

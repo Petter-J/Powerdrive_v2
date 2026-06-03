@@ -108,6 +108,7 @@ void NavFusion::update(
 
     s.gpsValid = gps.locationValid;
     s.locationUpdated = gps.locationUpdated;
+    s.locationSeq = gps.locationSeq;
     s.speedValid = gps.speedValid;
     s.courseValid = gps.courseValid;
 

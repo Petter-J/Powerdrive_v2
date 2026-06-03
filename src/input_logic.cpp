@@ -46,15 +46,12 @@ void InputLogic::applyButtons(
 
     handleStop(btn, nowMs, sys, controller);
 
-    if (sys.mode != SystemMode::STOP)
+    if (btn.stopRequested)
     {
-        handleModeButtons(btn, nowMs, sys, controller);
-    }
-    else
-    {
-        handleModeButtons(btn, nowMs, sys, controller);
+        return;
     }
 
+    handleModeButtons(btn, nowMs, sys, controller);
     handleManualButtons(btn, nowMs, sys);
     handleAutoButtons(btn, nowMs, sys);
 }

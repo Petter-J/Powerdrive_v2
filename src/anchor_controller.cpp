@@ -186,6 +186,7 @@ void AnchorController::onEnter(SystemState &sys)
     mStartZoneHits = 0;
     mDriftZoneHits = 0;
     mStopZoneHits = 0;
+    mLastLocationSeq = 0;
 
     mAnchorMode = AnchorMode::Learning;
     mAnchorLearnedThrustPct = clampAnchorThrust(AnchorConfig::START_THRUST_PCT);
@@ -207,9 +208,9 @@ void AnchorController::onEnter(SystemState &sys)
         }
     }
 
-    if (sys.sensors.motorImuValid)
+    if (sys.sensors.motorHeadingWorldValid)
     {
-        sys.targetHeadingDeg = sys.sensors.motorHeadingDeg;
+        sys.targetHeadingDeg = sys.sensors.motorHeadingWorldDeg;
     }
 }
 
@@ -229,6 +230,7 @@ void AnchorController::onExit()
     mStartZoneHits = 0;
     mDriftZoneHits = 0;
     mStopZoneHits = 0;
+    mLastLocationSeq = 0;
 
     mAnchorMode = AnchorMode::Learning;
     mAnchorLearnedThrustPct = clampAnchorThrust(AnchorConfig::START_THRUST_PCT);
@@ -301,8 +303,11 @@ ActuatorCommand AnchorController::update(float dtSec, SystemState &sys, PidContr
     const bool inZone5 = (distRawM >= startRadiusM);
     const bool inZone4 = !inZone3 && !inZone5;
 
-    if (sys.sensors.locationUpdated)
+    if (sys.sensors.gpsValid &&
+        sys.sensors.locationSeq != mLastLocationSeq)
     {
+        mLastLocationSeq = sys.sensors.locationSeq;
+
         if (mWasInsideRadius)
         {
             if (inZone4 && mDriftZoneHits < START_CONFIRM_COUNT)
@@ -575,14 +580,14 @@ ActuatorCommand AnchorController::update(float dtSec, SystemState &sys, PidContr
         sys.anchorLonDeg);
 
     float headingError =
-        shortestAngleErrorDeg(targetBearingDeg, sys.sensors.motorHeadingDeg);
+        shortestAngleErrorDeg(targetBearingDeg, sys.sensors.motorHeadingWorldDeg);
 
     if (fabsf(headingError) < AnchorConfig::HEADING_DEADBAND_DEG)
     {
         headingError = 0.0f;
     }
 
-    float steerCmd = headingPid.update(headingError, dtSec);
+    float steerCmd = -headingPid.update(headingError, dtSec);
 
     out.steerPct = clampf(
         steerCmd,

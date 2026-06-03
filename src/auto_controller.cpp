@@ -98,9 +98,7 @@ float AutoController::computeDesiredSteerOffsetDeg(float courseErrorDeg) const
 
 float AutoController::computeActualSteerOffsetDeg(const SystemState &sys) const
 {
-    return shortestAngleErrorDeg(
-        sys.sensors.motorHeadingDeg,
-        sys.sensors.boatHeadingDeg);
+    return sys.sensors.motorAngleDeg;
 }
 
 bool AutoController::updateSteerActive(float steerErrorDeg)

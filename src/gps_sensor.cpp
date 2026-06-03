@@ -66,6 +66,8 @@ bool GpsSensor::begin()
 
 void GpsSensor::update(GpsFix &out)
 {
+    static uint32_t gpsLocationSeq = 0;
+
     uint16_t bytesRead = 0;
     static constexpr uint16_t MAX_GPS_BYTES_PER_UPDATE = 135;
 
@@ -92,11 +94,19 @@ void GpsSensor::update(GpsFix &out)
         out.latDeg = _gps.location.lat();
         out.lonDeg = _gps.location.lng();
         out.locationUpdated = _gps.location.isUpdated();
+
+        if (out.locationUpdated)
+        {
+            gpsLocationSeq++;
+        }
     }
     else
     {
         out.locationUpdated = false;
     }
+
+    out.locationSeq = gpsLocationSeq;
+   
 
     if (out.speedValid)
     {
