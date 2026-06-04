@@ -20,7 +20,7 @@ namespace AutoControlConfig
 {
     static constexpr float SPEED_STEP_PCT = 5.0f;
     static constexpr float HEADING_STEP_DEG = 5.0f;
-    static constexpr uint32_t REPEAT_MS = 250;
+    static constexpr uint32_t REPEAT_MS = 200;
     static constexpr float SPEED_STEP_KN = 0.1f;
 
 }
@@ -52,7 +52,7 @@ namespace AnchorConfig
     // --------------------------------------------------------
     static constexpr float START_THRUST_PCT = 10.0f;
     static constexpr float MIN_THRUST_PCT = 10.0f;
-    static constexpr float MAX_THRUST_PCT = 50.0f;
+    static constexpr float MAX_THRUST_PCT = 70.0f;
 
     // Distans där full thrust används
     static constexpr float FULL_THRUST_DIST_M = 8.0f;

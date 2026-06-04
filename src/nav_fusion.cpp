@@ -22,9 +22,9 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
     static float referenceCourseDeg = 0.0f;
     static int32_t stableMs = 0;
 
-    static constexpr float MIN_CAL_SPEED_MPS = 1.0f;        // 4-5ms i live
-    static constexpr float MAX_COURSE_DEVIATION_DEG = 5.0f; // 3gr i live
-    static constexpr int32_t REQUIRED_STABLE_MS = 3000;     // 5000ms i live
+    static constexpr float MIN_CAL_SPEED_MPS = 4.0f;        // 4-5ms i live
+    static constexpr float MAX_COURSE_DEVIATION_DEG = 3.0f; // 3gr i live
+    static constexpr int32_t REQUIRED_STABLE_MS = 5000;     // 5000ms i live
     static constexpr int32_t GOOD_STEP_MS = 100;
     static constexpr int32_t BAD_PENALTY_MS = 200;
 
@@ -66,7 +66,7 @@ static bool gpsHeadingCalibrationOk(const GpsFix &gps)
     }
     else
     {
-        static constexpr float RESET_COURSE_DEVIATION_DEG = 30.0f; // 15 grader i live
+        static constexpr float RESET_COURSE_DEVIATION_DEG = 15.0f; // 15 grader i live
 
         if (courseDeviationDeg >= RESET_COURSE_DEVIATION_DEG)
         {

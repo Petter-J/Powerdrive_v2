@@ -362,18 +362,16 @@ void loop()
             pkt.counter = 4;
         else if (strcmp(gSys.sensors.autoState, "LEARN_RET") == 0)
             pkt.counter = 5;
-        else if (strcmp(gSys.sensors.autoState, "HOLD") == 0)
-            pkt.counter = 6;
-        else if (strcmp(gSys.sensors.autoState, "DRIFT") == 0)
-            pkt.counter = 7;
-        else if (strcmp(gSys.sensors.autoState, "RETURN") == 0)
-            pkt.counter = 8;
         else if (strcmp(gSys.sensors.autoState, "M_HOLD") == 0)
+            pkt.counter = 6;
+        else if (strcmp(gSys.sensors.autoState, "M_DRIFT") == 0)
+            pkt.counter = 7;
+        else if (strcmp(gSys.sensors.autoState, "M_BACK") == 0)
+            pkt.counter = 8;
+        else if (strcmp(gSys.sensors.autoState, "M_FRONT") == 0)
             pkt.counter = 9;
-        else if (strcmp(gSys.sensors.autoState, "MAINTAIN") == 0)
-            pkt.counter = 10;
         else if (strcmp(gSys.sensors.autoState, "M_RETURN") == 0)
-            pkt.counter = 11;
+            pkt.counter = 10;
         else
             pkt.counter = 0;
     }
