@@ -357,15 +357,28 @@ void InputLogic::handleManualButtons(
     if (sys.mode != SystemMode::MANUAL)
         return;
 
-    if (nowMs - _lastManualAdjustMs < _cfg.manualRepeatMs)
-        return;
-
-    _lastManualAdjustMs = nowMs;
-
     const bool thrustUp = btn.thrustUpHeld;
     const bool thrustDown = btn.thrustDownHeld;
     const bool steerLeft = btn.steerLeftHeld;
     const bool steerRight = btn.steerRightHeld;
+
+    if (steerLeft && !steerRight)
+    {
+        sys.manualSteerPct = -ManualControlConfig::STEER_JOG_PCT;
+    }
+    else if (steerRight && !steerLeft)
+    {
+        sys.manualSteerPct = ManualControlConfig::STEER_JOG_PCT;
+    }
+    else
+    {
+        sys.manualSteerPct = 0.0f;
+    }
+
+    if (nowMs - _lastManualAdjustMs < _cfg.manualRepeatMs)
+        return;
+
+    _lastManualAdjustMs = nowMs;
 
     if (thrustUp && !thrustDown)
     {
@@ -389,29 +402,6 @@ void InputLogic::handleManualButtons(
                 sys.manualThrustPct - _cfg.manualThrustStepPct,
                 _cfg.manualThrustMinPct,
                 _cfg.manualThrustMaxPct);
-        }
-    }
-
-    if (steerLeft && !steerRight)
-    {
-        sys.manualSteerPct = -ManualControlConfig::STEER_JOG_PCT;
-    }
-    else if (steerRight && !steerLeft)
-    {
-        sys.manualSteerPct = ManualControlConfig::STEER_JOG_PCT;
-    }
-    else
-    {
-        static uint32_t lastSteerInputMs = 0;
-
-        if (steerLeft || steerRight)
-        {
-            lastSteerInputMs = nowMs;
-        }
-
-        if (nowMs - lastSteerInputMs > 75)
-        {
-            sys.manualSteerPct = 0.0f;
         }
     }
 }

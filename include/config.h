@@ -166,9 +166,10 @@ namespace BoatCompassConfig
 namespace RampConfig
 {
     static constexpr float THRUST_RAMP_TIME_MS = 400.0f;
-    static constexpr float STEER_RAMP_TIME_MS = 200.0f;
-}
 
+    static constexpr float STEER_RAMP_UP_TIME_MS = 500.0f;
+    static constexpr float STEER_RAMP_DOWN_TIME_MS = 150.0f;
+}
 // ============================================================
 // MOTOR CONFIG
 // ============================================================
@@ -183,7 +184,7 @@ namespace MotorConfig
 // ============================================================
 namespace AutoConfig
 {
-    static constexpr float MIN_GPS_COURSE_SPEED_MPS = 0.3f;
+    static constexpr float MIN_GPS_COURSE_SPEED_MPS = 0.5f;
     static constexpr float START_THRUST_PCT = 20.0f;
     static constexpr float MAX_SPEED_MPS = 2.5f;
     static constexpr float COG_FILTER_ALPHA = 0.2f;

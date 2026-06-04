@@ -158,13 +158,22 @@ void MotorManager::apply(const ActuatorCommand& cmd, bool motorsEnabled, float d
     // ----------------------------
     // Steering ramp
     // ----------------------------
+    float steerDiff = cmd.steerPct - _steerFiltered;
+
+    const bool rampingUp =
+        fabsf(cmd.steerPct) > fabsf(_steerFiltered);
+
+    const float steerRampTimeMs =
+        rampingUp
+            ? RampConfig::STEER_RAMP_UP_TIME_MS
+            : RampConfig::STEER_RAMP_DOWN_TIME_MS;
+
     const float steerRatePerSec =
-        (RampConfig::STEER_RAMP_TIME_MS > 0.0f)
-            ? (100.0f / (RampConfig::STEER_RAMP_TIME_MS / 1000.0f))
+        (steerRampTimeMs > 0.0f)
+            ? (100.0f / (steerRampTimeMs / 1000.0f))
             : 1000.0f;
 
     const float steerMaxStep = steerRatePerSec * dtSec;
-    float steerDiff = cmd.steerPct - _steerFiltered;
 
     if (steerDiff > steerMaxStep) steerDiff = steerMaxStep;
     if (steerDiff < -steerMaxStep) steerDiff = -steerMaxStep;
